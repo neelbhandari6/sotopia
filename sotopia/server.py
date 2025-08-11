@@ -21,8 +21,6 @@ from sotopia.envs.evaluators import (
     EvaluationForTwoAgents,
     EpisodeLLMEvaluator,
     RuleBasedTerminatedEvaluator,
-    SotopiaDimensions,
-    SotopiaTruthfulnessDimensions,
     unweighted_aggregate_evaluate,
 )
 from sotopia.generation_utils.generate import agenerate_script

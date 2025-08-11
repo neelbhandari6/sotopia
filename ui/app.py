@@ -5,16 +5,17 @@ import streamlit as st
 # Page Configuration
 st.set_page_config(page_title="SocialStream_Demo", page_icon="🧊", layout="wide")
 
-# Session State Configuration for local development
-PORT = 8080
-st.session_state.API_BASE = f"http://localhost:{PORT}"
-st.session_state.WS_BASE = f"ws://localhost:{PORT}"
-
-# Modal Configuration for remote deployment
+# Configuration for connecting to hosted API
 DEFAULT_BASE = "sotopia-lab--sotopia-fastapi-webapi-serve.modal.run"
+
+# Always use the hosted API for local development
 if "API_BASE" not in st.session_state:
     st.session_state.API_BASE = f"https://{DEFAULT_BASE}"
     st.session_state.WS_BASE = f"ws://{DEFAULT_BASE}"
+
+# Set the API base for this session
+st.session_state.API_BASE = f"https://{DEFAULT_BASE}"
+st.session_state.WS_BASE = f"ws://{DEFAULT_BASE}"
 
 
 def update_database_callback() -> None:
@@ -56,6 +57,11 @@ display_chat = st.Page(
     # icon=":material/add:",
 )
 
+user_study = st.Page(
+    f"{page_path}/user_study.py",
+    title="User Study",
+)
+
 display_evaluation_dimensions = st.Page(
     f"{page_path}/display_evaluation_dimensions.py",
     title="Evaluation Dimensions",
@@ -75,19 +81,28 @@ add_evaluation_dimensions = st.Page(
     icon=":material/add:",
 )
 
-pg = st.navigation(
-    [
-        display_intro,
-        display_scenarios,
-        display_characters,
-        display_episodes,
-        display_chat,
-        display_evaluation_dimensions,
-        add_characters,
-        add_scenarios,
-        add_evaluation_dimensions,
-    ]
-)
+# Check if this is participant mode (hide other navigation)
+participant_mode = st.query_params.get("participant", "false").lower() == "true"
+
+if participant_mode:
+    # Only show user study page for participants
+    pg = st.navigation([user_study])
+else:
+    # Show all pages for researchers
+    pg = st.navigation(
+        [
+            display_intro,
+            display_scenarios,
+            display_characters,
+            display_episodes,
+            display_chat,
+            user_study,
+            display_evaluation_dimensions,
+            add_characters,
+            add_scenarios,
+            add_evaluation_dimensions,
+        ]
+    )
 
 # Reset active agent when switching modes across pages
 if "mode" not in st.session_state or pg.title != st.session_state.get("mode", None):
