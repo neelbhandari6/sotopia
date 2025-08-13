@@ -3,6 +3,7 @@ import json
 import re
 import csv
 import os
+import asyncio
 from datetime import datetime
 from typing import Any
 from uuid import uuid4
@@ -12,6 +13,8 @@ from ui.rendering import (
     get_models,
 )
 from sotopia.database import EpisodeLog, AgentProfile, EnvironmentProfile
+from sotopia.transparency_hook import make_transparency_agent
+from sotopia.messages import Observation, AgentAction
 
 
 def load_local_scenarios() -> dict[str, dict[Any, Any]]:
@@ -129,8 +132,138 @@ def get_models_local() -> dict[str, str]:
     }
 
 
+class SimpleAgentProfile:
+    """Simple agent profile that doesn't require database connection"""
+    def __init__(self, **kwargs):
+        self.first_name = kwargs.get('first_name', 'AI')
+        self.last_name = kwargs.get('last_name', 'Agent')
+        self.age = kwargs.get('age', 22)
+        self.occupation = kwargs.get('occupation', 'Assistant')
+        self.gender = kwargs.get('gender', 'Unknown')
+        self.gender_pronoun = kwargs.get('gender_pronoun', 'They/them')
+        self.public_info = kwargs.get('public_info', '')
+        self.big_five = kwargs.get('big_five', '')
+        self.moral_values = kwargs.get('moral_values', [])
+        self.schwartz_personal_values = kwargs.get('schwartz_personal_values', [])
+        self.personality_and_values = kwargs.get('personality_and_values', '')
+        self.decision_making_style = kwargs.get('decision_making_style', '')
+        self.secret = kwargs.get('secret', '')
+        self.mbti = kwargs.get('mbti', '')
+
+
+def create_agent_profile_from_json(agent_data: dict) -> SimpleAgentProfile:
+    """Convert JSON agent data to AgentProfile object without database dependency"""
+    # Create SimpleAgentProfile with required fields (no database connection needed)
+    agent_profile = SimpleAgentProfile(
+        first_name=agent_data.get('first_name', 'AI'),
+        last_name=agent_data.get('last_name', 'Agent'),
+        age=agent_data.get('age', 22),
+        occupation=agent_data.get('occupation', 'Assistant'),
+        gender=agent_data.get('gender', 'Unknown'),
+        gender_pronoun=agent_data.get('gender_pronoun', 'They/them'),
+        public_info=agent_data.get('public_info', ''),
+        big_five=agent_data.get('big_five', ''),
+        moral_values=agent_data.get('moral_values', []),
+        schwartz_personal_values=agent_data.get('schwartz_personal_values', []),
+        personality_and_values=agent_data.get('personality_and_values', ''),
+        decision_making_style=agent_data.get('decision_making_style', ''),
+        secret=agent_data.get('secret', ''),
+        mbti=agent_data.get('mbti', ''),
+    )
+    return agent_profile
+
+
+async def get_ai_response_async(human_message: str, agent_profile_data: dict, transparency: str, turn_number: int, conversation_context: str = "", model_name: str = "gpt-4o") -> str:
+    """Get AI response using the transparency system"""
+    try:
+        # Convert JSON data to SimpleAgentProfile (no database needed)
+        agent_profile = create_agent_profile_from_json(agent_profile_data)
+        
+        # Create transparency-aware agent with tag
+        tag = "high_transparency" if transparency == "high" else "low_transparency"
+        print(f"DEBUG: Creating agent with transparency={transparency}, tag={tag}")
+        print(f"DEBUG: Agent profile first_name: {agent_profile.first_name}")
+        
+        agent = make_transparency_agent(agent_profile, model_name, tag)
+        print(f"DEBUG: Created agent type: {type(agent)}")
+        print(f"DEBUG: Agent has transparency attribute: {hasattr(agent, 'transparency')}")
+        if hasattr(agent, 'transparency'):
+            print(f"DEBUG: Agent transparency setting: {agent.transparency}")
+        
+        # Create observation with conversation context
+        available_actions = ["speak", "non-verbal communication", "leave"]
+        
+        # Build the context string that includes conversation history and current message
+        full_context = f"{conversation_context}\nHuman: {human_message}" if conversation_context else f"Human: {human_message}"
+        
+        # Create observation from human message with context
+        observation = Observation(
+            last_turn=full_context,
+            turn_number=turn_number,
+            available_actions=available_actions,
+            legal_info=""
+        )
+        
+        # Get agent's action
+        action = await agent.aact(observation)
+        
+        # Handle the action result more robustly
+        if action and hasattr(action, 'argument') and action.argument:
+            result = action.argument
+            # Ensure result is a string, not a dict
+            if isinstance(result, dict):
+                # If it's a dict, try to extract meaningful text
+                result = result.get('description', str(result))
+            elif not isinstance(result, str):
+                result = str(result)
+        else:
+            result = "I understand."
+            
+        print(f"DEBUG ASYNC: Action type: {action.action_type if action else 'None'}")
+        print(f"DEBUG ASYNC: Raw argument: {action.argument if action else 'None'}")
+        print(f"DEBUG ASYNC: Processed result: {result[:100]}...")
+        return result
+        
+    except Exception as e:
+        st.error(f"Error getting AI response: {str(e)}")
+        import traceback
+        st.error(f"Full traceback: {traceback.format_exc()}")
+        # Also log to console for debugging
+        print(f"AI Response Error: {str(e)}")
+        print(f"Full traceback: {traceback.format_exc()}")
+        
+        # Return a test response with thinking tags for debugging
+        if transparency == "high":
+            return "<THINK>I'm having technical difficulties with the AI generation system. The validation error suggests the agent is returning malformed data instead of a proper string response.</THINK>I apologize, but I'm experiencing some technical difficulties right now. Please try again."
+        else:
+            return "I'm sorry, I'm having trouble responding right now."
+
+
+def get_ai_response(human_message: str, agent_profile_data: dict, transparency: str, turn_number: int, conversation_context: str = "", model_name: str = "gpt-4o") -> str:
+    """Sync wrapper for async AI response function"""
+    try:
+        # Simplified approach - just use asyncio.run in a thread
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(
+                asyncio.run, 
+                get_ai_response_async(human_message, agent_profile_data, transparency, turn_number, conversation_context, model_name)
+            )
+            result = future.result(timeout=60)  # 60 second timeout
+            print(f"DEBUG SYNC: Got result from async: {result[:100]}...")
+            return result
+            
+    except Exception as e:
+        st.error(f"Error in get_ai_response: {str(e)}")
+        import traceback
+        st.error(f"Full traceback: {traceback.format_exc()}")
+        print(f"get_ai_response Error: {str(e)}")
+        print(f"get_ai_response traceback: {traceback.format_exc()}")
+        return "I'm sorry, I'm having trouble responding right now."
+
+
 def save_conversation_to_redis(conversation_history: list, interventions: dict, scenario_choice: str, agent_choice: str) -> str:
-    """Save conversation data to Redis database as EpisodeLog"""
+    """Save conversation data to Redis database as EpisodeLog with enhanced agent attributes"""
     try:
         # Generate unique session ID
         session_id = f"user_study_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{str(uuid4())[:8]}"
@@ -151,31 +284,73 @@ def save_conversation_to_redis(conversation_history: list, interventions: dict, 
             formatted_messages.append(current_turn)
             current_turn = []
         
-        # Get scenario and agent info
-        scenarios = get_scenarios()
-        agents = get_agents()
+        # Get agent profile data for enhanced storage
+        agent_profile_data = st.session_state.agent_dict.get(agent_choice, {})
         
-        scenario_info = scenarios.get(scenario_choice, {})
-        agent_info = agents.get(agent_choice, {})
+        # Enhanced reasoning with comprehensive intervention data and agent attributes
+        enhanced_reasoning = {
+            "study_type": "user_study_human_ai_conversation",
+            "session_id": session_id,
+            "timestamp": datetime.now().isoformat(),
+            "interventions": interventions,
+            "scenario_id": scenario_choice,
+            "agent_id": agent_choice,
+            "agent_attributes": {
+                "name": f"{agent_profile_data.get('first_name', '')} {agent_profile_data.get('last_name', '')}".strip(),
+                "occupation": agent_profile_data.get('occupation', ''),
+                "age": agent_profile_data.get('age', ''),
+                "personality_and_values": agent_profile_data.get('personality_and_values', ''),
+                "decision_making_style": agent_profile_data.get('decision_making_style', ''),
+                "big_five": agent_profile_data.get('big_five', ''),
+                "mbti": agent_profile_data.get('mbti', ''),
+            },
+            "conversation_stats": {
+                "total_turns": len(conversation_history),
+                "human_messages": len([msg for msg in conversation_history if msg.get('speaker') == 'Human']),
+                "ai_messages": len([msg for msg in conversation_history if msg.get('speaker') != 'Human']),
+                "avg_message_length": sum(len(msg.get('content', '')) for msg in conversation_history) / len(conversation_history) if conversation_history else 0
+            }
+        }
         
-        # Create episode log
+        # Create structured model tags that include all intervention dimensions
+        model_tags = []
+        for dimension, value in interventions.items():
+            model_tags.append(f"{dimension}_{value}")
+        model_tags.append("human")
+        
+        # Create episode log with enhanced data
         episode_log = EpisodeLog(
             environment=scenario_choice,
             agents=[agent_choice, "human_participant"],  # AI agent + human
-            tag=f"user_study_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
-            models=[f"intervention_{interventions.get('transparency', 'low')}", "human"],
+            tag=f"user_study_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{session_id.split('_')[-1]}",
+            models=model_tags,  # Now includes all intervention dimensions
             messages=formatted_messages,
-            reasoning=f"User study with interventions: {json.dumps(interventions)}",
+            reasoning=json.dumps(enhanced_reasoning, indent=2),  # Structured JSON with all details
             rewards=[0.0, 0.0]  # Placeholder rewards
         )
         
         # Save to Redis
         episode_log.save()
         st.success(f"✅ Conversation saved to database with ID: {episode_log.pk}")
+        
+        # Store EnvAgentCombo for easier querying
+        try:
+            from sotopia.database import EnvAgentComboStorage
+            env_agent_combo = EnvAgentComboStorage(
+                env_id=scenario_choice,
+                agent_ids=[agent_choice, "human_participant"]
+            )
+            env_agent_combo.save()
+        except Exception as combo_error:
+            # Don't fail the main save if EnvAgentCombo fails
+            print(f"Warning: Could not save EnvAgentCombo: {combo_error}")
+        
         return episode_log.pk
         
     except Exception as e:
         st.error(f"❌ Failed to save to database: {str(e)}")
+        import traceback
+        st.error(f"Traceback: {traceback.format_exc()}")
         return ""
 
 
@@ -261,6 +436,32 @@ def export_conversation_to_files(conversation_history: list, interventions: dict
         st.error(f"❌ Failed to export files: {str(e)}")
 
 
+def find_matching_agent(interventions: dict, agent_dict: dict) -> str:
+    """Find agent profile that matches the specified intervention dimensions"""
+    target_transparency = interventions.get("transparency", "low").title()  # "High" or "Low"
+    target_warmth = interventions.get("warmth", "low").title()
+    target_expertise = interventions.get("expertise", "high").title()  
+    target_adaptability = interventions.get("adaptability", "high").title()
+    target_theory_of_mind = interventions.get("theory_of_mind", "high").title()
+    
+    # Build target pattern to match in personality_and_values
+    target_pattern = f"{target_transparency} Transparency, {target_warmth} Warmth, {target_adaptability} Adaptability, {target_expertise} Expertise, {target_theory_of_mind} Theory of Mind"
+    
+    # Search through all agents to find matching personality
+    for agent_key, agent_data in agent_dict.items():
+        personality = agent_data.get("personality_and_values", "")
+        if target_pattern in personality:
+            print(f"DEBUG: Found matching agent: {agent_key}")
+            print(f"DEBUG: Target pattern: {target_pattern}")
+            print(f"DEBUG: Agent personality: {personality[:200]}...")
+            return agent_key
+    
+    # If no exact match found, return first available agent
+    print(f"DEBUG: No matching agent found for pattern: {target_pattern}")
+    print(f"DEBUG: Available agents: {list(agent_dict.keys())}")
+    return list(agent_dict.keys())[0]
+
+
 def initialize_simple_session_state() -> None:
     """Initialize session state for simple user study"""
     # Initialize API_BASE if not already set
@@ -269,20 +470,20 @@ def initialize_simple_session_state() -> None:
         st.session_state.API_BASE = f"https://{DEFAULT_BASE}"
         st.session_state.WS_BASE = f"ws://{DEFAULT_BASE}"
     
+    # Initialize API key check
+    if "api_key_set" not in st.session_state:
+        st.session_state.api_key_set = os.getenv("OPENAI_API_KEY") is not None
+    
     if "conversation_history" not in st.session_state:
         st.session_state.conversation_history = []
         st.session_state.turn_number = 0
         st.session_state.study_active = False
+        st.session_state.agent_instance = None  # Will hold the agent instance
         
         # Load data from local files
         st.session_state.scenarios = load_local_scenarios()
         st.session_state.agent_dict = load_local_agents()
         st.session_state.agent_model_dict = get_models_local()
-        
-        # Pre-configured study settings (support both long and short forms)
-        st.session_state.scenario_choice = st.query_params.get("scenario", st.query_params.get("s", list(st.session_state.scenarios.keys())[0]))
-        st.session_state.agent_choice_1 = st.query_params.get("ai_agent", st.query_params.get("agent", list(st.session_state.agent_dict.keys())[0]))
-        st.session_state.max_turns = 20  # Maximum conversation turns
         
         # All five intervention dimensions from URL parameters (support both long and short forms)
         st.session_state.interventions = {
@@ -292,6 +493,19 @@ def initialize_simple_session_state() -> None:
             "adaptability": st.query_params.get("adaptability", st.query_params.get("a", "high")).lower(), # a or adaptability
             "theory_of_mind": st.query_params.get("theory_of_mind", st.query_params.get("tom", "high")).lower() # tom or theory_of_mind
         }
+        
+        # Pre-configured study settings
+        st.session_state.scenario_choice = st.query_params.get("scenario", st.query_params.get("s", list(st.session_state.scenarios.keys())[0]))
+        
+        # Auto-select agent based on intervention dimensions (NEW LOGIC)
+        if st.query_params.get("ai_agent") or st.query_params.get("agent"):
+            # Manual agent selection via URL
+            st.session_state.agent_choice_1 = st.query_params.get("ai_agent", st.query_params.get("agent", list(st.session_state.agent_dict.keys())[0]))
+        else:
+            # Auto-select agent based on intervention dimensions
+            st.session_state.agent_choice_1 = find_matching_agent(st.session_state.interventions, st.session_state.agent_dict)
+        
+        st.session_state.max_turns = 20  # Maximum conversation turns
         
         # Backward compatibility for transparency
         st.session_state.show_ai_thinking = st.session_state.interventions["transparency"] == "high"
@@ -350,6 +564,16 @@ def display_user_role_simple() -> None:
                 st.markdown(f"**Age**: {ai_agent.get('age', 'Unknown')}")
             with col2:
                 st.markdown(f"**Occupation**: {ai_agent.get('occupation', 'Unknown')}")
+            
+            # Show intervention dimensions and selected agent (for verification)
+            with st.expander("🔧 Agent Selection Details (Debug)", expanded=False):
+                st.markdown("**URL Intervention Dimensions:**")
+                st.json(st.session_state.interventions)
+                st.markdown("**Selected Agent Profile:**")
+                st.markdown(f"Agent Key: `{st.session_state.agent_choice_1}`")
+                personality_snippet = ai_agent.get('personality_and_values', '')[:300] + "..."
+                st.markdown(f"Personality: {personality_snippet}")
+            
             st.markdown("You will be conversing with this AI agent. The conversation will begin when you send your first message.")
 
 
@@ -365,7 +589,7 @@ def display_conversation_history():
             
             if speaker == 'Human':
                 with st.chat_message("user"):
-                    st.write(f"**You** ({action_type}): {content}")
+                    st.write(f"**You**: {content}")
             else:
                 with st.chat_message("assistant"):
                     if st.session_state.show_ai_thinking and '<THINK>' in content:
@@ -387,18 +611,47 @@ def display_conversation_history():
 
 
 def simulate_ai_response(human_message: str) -> str:
-    """Simulate AI response (placeholder - in real implementation this would call the LLM)"""
-    # This is a placeholder. In the actual implementation, this would:
-    # 1. Send the human message to the AI agent
-    # 2. Get the AI's response using the selected agent personality and transparency setting
-    # 3. Return the formatted response
-    
-    ai_name = st.session_state.agent_dict[st.session_state.agent_choice_1].get('first_name', 'AI')
-    
-    if st.session_state.show_ai_thinking:
-        return f"<THINK>The human just said: '{human_message}'. I should respond appropriately based on my personality and the scenario context.</THINK>Thank you for sharing that with me. I understand your perspective on this matter."
-    else:
-        return "Thank you for sharing that with me. I understand your perspective on this matter."
+    """Get AI response using the actual agent with transparency settings"""
+    try:
+        # Get the selected agent data
+        agent_profile_data = st.session_state.agent_dict[st.session_state.agent_choice_1]
+        
+        # Map transparency intervention to transparency level
+        transparency_level = st.session_state.interventions.get("transparency", "low")
+        
+        # Get model name (you can configure this)
+        model_name = "gpt-4o"  # Default model, can be made configurable
+        
+        # if st.session_state.interventions.get("transparency") == "high":
+        #     return "<THINK>TEST: This is a manual thinking process to verify the display works.</THINK>Hello! This is a test response."
+  
+        # Build conversation context from history
+        conversation_context = ""
+        for msg in st.session_state.conversation_history:
+            speaker = msg.get('speaker', 'Unknown')
+            content = msg.get('content', '')
+            conversation_context += f"{speaker}: {content}\n"
+        
+        # Get current turn number
+        current_turn = st.session_state.turn_number + 1
+        
+        # Get AI response using the actual agent
+        response = get_ai_response(
+            human_message=human_message,
+            agent_profile_data=agent_profile_data,
+            transparency=transparency_level,
+            turn_number=current_turn,
+            conversation_context=conversation_context.strip(),
+            model_name=model_name
+        )
+        
+        return response
+        
+    except Exception as e:
+        st.error(f"Error getting AI response: {str(e)}")
+        import traceback
+        st.error(f"Full traceback: {traceback.format_exc()}")
+        return "I apologize, but I'm having trouble responding right now. Please try again."
 
 
 def simple_user_study_interface() -> None:
@@ -499,6 +752,20 @@ def simple_user_study_interface() -> None:
                     if len(st.session_state.conversation_history) >= st.session_state.max_turns:
                         st.session_state.study_active = False
                         st.success(f"Conversation completed! Maximum turns ({st.session_state.max_turns}) reached. Thank you for participating!")
+                        
+                        # Automatically save to database when max turns reached
+                        try:
+                            session_id = save_conversation_to_redis(
+                                st.session_state.conversation_history,
+                                st.session_state.interventions,
+                                st.session_state.scenario_choice,
+                                st.session_state.agent_choice_1
+                            )
+                            if session_id:
+                                st.session_state.saved_session_id = session_id
+                                st.info("💾 Conversation automatically saved to database.")
+                        except Exception as e:
+                            st.error(f"Warning: Could not auto-save to database: {str(e)}")
                     
                     st.rerun()
                 else:
@@ -508,6 +775,20 @@ def simple_user_study_interface() -> None:
             if st.button("End Conversation", type="secondary"):
                 st.session_state.study_active = False
                 st.success("Conversation ended. Thank you for participating!")
+                
+                # Automatically save to database when user ends conversation
+                try:
+                    session_id = save_conversation_to_redis(
+                        st.session_state.conversation_history,
+                        st.session_state.interventions,
+                        st.session_state.scenario_choice,
+                        st.session_state.agent_choice_1
+                    )
+                    if session_id:
+                        st.session_state.saved_session_id = session_id
+                        st.info("💾 Conversation automatically saved to database.")
+                except Exception as e:
+                    st.error(f"Warning: Could not auto-save to database: {str(e)}")
     
     # Show conversation stats
     if st.session_state.conversation_history:
@@ -515,45 +796,151 @@ def simple_user_study_interface() -> None:
         turn_count = len(st.session_state.conversation_history)  # Each message = 1 turn
         st.markdown(f"**Conversation turns**: {turn_count}/{st.session_state.max_turns}")
     
-    # Data saving section (show when conversation has ended and there's data to save)
+    # Show auto-save confirmation (conversation already saved automatically)
     if not st.session_state.study_active and st.session_state.conversation_history:
-        st.markdown("---")
-        st.markdown("### 💾 **Save Conversation Data**")
-        st.markdown("Your conversation data can be saved for research purposes:")
+        if st.session_state.get('saved_session_id'):
+            st.success("✅ Conversation automatically saved to database!")
+            st.markdown(f"**Session ID:** `{st.session_state.saved_session_id}`")
         
-        col1, col2 = st.columns(2)
+        # Database viewing section (only for researchers, not participants)
+        participant_mode = st.query_params.get("participant", "false").lower() == "true"
         
-        with col1:
-            if st.button("💾 Save to Database", type="primary", use_container_width=True):
-                session_id = save_conversation_to_redis(
-                    st.session_state.conversation_history,
-                    st.session_state.interventions,
-                    st.session_state.scenario_choice,
-                    st.session_state.agent_choice_1
-                )
-                if session_id:
-                    st.session_state.saved_session_id = session_id
+        if not participant_mode:
+            st.markdown("---")
+            st.markdown("### 🔍 **View Saved Data**")
+            st.markdown("Explore previously saved conversations and database contents:")
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                if st.button("📊 Database Summary", use_container_width=True):
+                    try:
+                        from ui.database_utils import print_database_summary
+                        # Capture output in a string buffer
+                        import io
+                        import contextlib
+                        
+                        output_buffer = io.StringIO()
+                        with contextlib.redirect_stdout(output_buffer):
+                            print_database_summary()
+                        
+                        summary_text = output_buffer.getvalue()
+                        st.text(summary_text)
+                        
+                    except Exception as e:
+                        st.error(f"Error accessing database: {str(e)}")
+            
+            with col2:
+                if st.button("🔎 Browse Episodes", use_container_width=True):
+                    try:
+                        from ui.database_utils import get_user_study_episodes, parse_episode_reasoning
+                        
+                        episodes = get_user_study_episodes()
+                        
+                        if episodes:
+                            st.markdown(f"**Found {len(episodes)} user study episodes:**")
+                            
+                            # Create a selectbox for episode details
+                            episode_options = {}
+                            for ep in episodes[-20:]:  # Show last 20 episodes
+                                episode_data = parse_episode_reasoning(ep)
+                                interventions = episode_data.get('interventions', {})
+                                transparency = interventions.get('transparency', 'unknown')
+                                turns = len(ep.messages)
+                                label = f"{ep.pk[:12]}... | {transparency} | {turns} turns | {ep.tag}"
+                                episode_options[label] = ep.pk
+                            
+                            if episode_options:
+                                selected_label = st.selectbox("Select episode to view details:", list(episode_options.keys()))
+                                selected_episode_id = episode_options[selected_label]
+                                
+                                if st.button("View Episode Details"):
+                                    # Show detailed episode information
+                                    from ui.database_utils import view_episode_details
+                                    import io
+                                    import contextlib
+                                    
+                                    output_buffer = io.StringIO()
+                                    with contextlib.redirect_stdout(output_buffer):
+                                        view_episode_details(selected_episode_id)
+                                    
+                                    details_text = output_buffer.getvalue()
+                                    st.text(details_text)
+                        else:
+                            st.warning("No user study episodes found in database")
+                            
+                    except Exception as e:
+                        st.error(f"Error browsing episodes: {str(e)}")
+            
+            with col3:
+                try:
+                    from ui.database_utils import get_user_study_episodes, export_episodes_to_enhanced_csv, export_episodes_to_enhanced_json
+                    
+                    episodes = get_user_study_episodes()
+                    
+                    if episodes:
+                        st.markdown(f"**Found {len(episodes)} episodes**")
+                        
+                        # Show export options outside the button
+                        export_format = st.radio("Export format:", ["CSV (for analysis)", "JSON (complete data)"], key="export_format_radio")
+                        
+                        if st.button("💾 Export Now", key="export_db", use_container_width=True):
+                            if "CSV" in export_format:
+                                filename = export_episodes_to_enhanced_csv(episodes)
+                                st.success(f"✅ Exported to CSV: {filename}")
+                                
+                                # Provide download
+                                with open(filename, 'r', encoding='utf-8') as f:
+                                    st.download_button(
+                                        label="📥 Download CSV",
+                                        data=f.read(),
+                                        file_name=os.path.basename(filename),
+                                        mime="text/csv",
+                                        key="download_csv"
+                                    )
+                            else:
+                                filename = export_episodes_to_enhanced_json(episodes)
+                                st.success(f"✅ Exported to JSON: {filename}")
+                                
+                                # Provide download
+                                with open(filename, 'r', encoding='utf-8') as f:
+                                    st.download_button(
+                                        label="📥 Download JSON",
+                                        data=f.read(),
+                                        file_name=os.path.basename(filename),
+                                        mime="application/json",
+                                        key="download_json"
+                                    )
+                    else:
+                        st.warning("No episodes found to export")
+                        st.button("💾 Export Database", disabled=True, use_container_width=True)
+                        
+                except Exception as e:
+                    st.error(f"Error with database export: {str(e)}")
+                    st.button("💾 Export Database", disabled=True, use_container_width=True)
         
-        with col2:
-            if st.button("📂 Export to Files", type="secondary", use_container_width=True):
-                export_session_id = st.session_state.get('saved_session_id', None)
-                export_conversation_to_files(
-                    st.session_state.conversation_history,
-                    st.session_state.interventions,
-                    st.session_state.scenario_choice,
-                    st.session_state.agent_choice_1,
-                    export_session_id
-                )
-        
-        # Show intervention summary for transparency
-        with st.expander("📊 Study Configuration Details"):
-            st.json({
-                "scenario": st.session_state.scenario_choice,
-                "ai_agent": st.session_state.agent_choice_1,
-                "interventions": st.session_state.interventions,
-                "total_turns": len(st.session_state.conversation_history),
-                "conversation_completed": not st.session_state.study_active
-            })
+        # Show comprehensive study configuration for transparency (only for researchers)
+        if not participant_mode:
+            with st.expander("📊 Study Configuration Details"):
+                agent_profile_data = st.session_state.agent_dict.get(st.session_state.agent_choice_1, {})
+                config_details = {
+                    "scenario": st.session_state.scenario_choice,
+                    "ai_agent": st.session_state.agent_choice_1,
+                    "interventions": st.session_state.interventions,
+                    "agent_attributes": {
+                        "name": f"{agent_profile_data.get('first_name', '')} {agent_profile_data.get('last_name', '')}".strip(),
+                        "occupation": agent_profile_data.get('occupation', ''),
+                        "personality_and_values": agent_profile_data.get('personality_and_values', ''),
+                        "decision_making_style": agent_profile_data.get('decision_making_style', '')
+                    },
+                    "conversation_stats": {
+                        "total_turns": len(st.session_state.conversation_history),
+                        "human_messages": len([msg for msg in st.session_state.conversation_history if msg.get('speaker') == 'Human']),
+                        "ai_messages": len([msg for msg in st.session_state.conversation_history if msg.get('speaker') != 'Human']),
+                    },
+                    "conversation_completed": not st.session_state.study_active
+                }
+                st.json(config_details)
 
 
 # Run the simple user study interface
