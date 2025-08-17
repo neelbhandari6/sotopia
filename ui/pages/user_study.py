@@ -262,7 +262,7 @@ def get_ai_response(human_message: str, agent_profile_data: dict, transparency: 
         return "I'm sorry, I'm having trouble responding right now."
 
 
-def save_conversation_to_redis(conversation_history: list, interventions: dict, scenario_choice: str, agent_choice: str) -> str:
+def save_conversation_to_redis(conversation_history: list, interventions: dict, scenario_choice: str, agent_choice: str, prolific_params: dict = None, survey_responses: dict = None) -> str:
     """Save conversation data to Redis database as EpisodeLog with enhanced agent attributes"""
     try:
         # Generate unique session ID
@@ -299,7 +299,6 @@ def save_conversation_to_redis(conversation_history: list, interventions: dict, 
                 "name": f"{agent_profile_data.get('first_name', '')} {agent_profile_data.get('last_name', '')}".strip(),
                 "occupation": agent_profile_data.get('occupation', ''),
                 "age": agent_profile_data.get('age', ''),
-                "personality_and_values": agent_profile_data.get('personality_and_values', ''),
                 "decision_making_style": agent_profile_data.get('decision_making_style', ''),
                 "big_five": agent_profile_data.get('big_five', ''),
                 "mbti": agent_profile_data.get('mbti', ''),
@@ -309,7 +308,9 @@ def save_conversation_to_redis(conversation_history: list, interventions: dict, 
                 "human_messages": len([msg for msg in conversation_history if msg.get('speaker') == 'Human']),
                 "ai_messages": len([msg for msg in conversation_history if msg.get('speaker') != 'Human']),
                 "avg_message_length": sum(len(msg.get('content', '')) for msg in conversation_history) / len(conversation_history) if conversation_history else 0
-            }
+            },
+            "prolific_data": prolific_params if prolific_params else {},
+            "survey_responses": survey_responses if survey_responses else {}
         }
         
         # Create structured model tags that include all intervention dimensions
@@ -479,6 +480,8 @@ def initialize_simple_session_state() -> None:
         st.session_state.turn_number = 0
         st.session_state.study_active = False
         st.session_state.agent_instance = None  # Will hold the agent instance
+        st.session_state.survey_completed = False
+        st.session_state.survey_responses = {}
         
         # Load data from local files
         st.session_state.scenarios = load_local_scenarios()
@@ -487,23 +490,40 @@ def initialize_simple_session_state() -> None:
         
         # All five intervention dimensions from URL parameters (support both long and short forms)
         st.session_state.interventions = {
-            "transparency": st.query_params.get("transparency", st.query_params.get("t", "low")).lower(),  # t or transparency
-            "warmth": st.query_params.get("warmth", st.query_params.get("w", "low")).lower(),              # w or warmth  
+            "transparency": st.query_params.get("transparency", st.query_params.get("t", "high")).lower(),  # t or transparency
+            "warmth": st.query_params.get("warmth", st.query_params.get("w", "high")).lower(),              # w or warmth  
             "expertise": st.query_params.get("expertise", st.query_params.get("e", "high")).lower(),       # e or expertise
             "adaptability": st.query_params.get("adaptability", st.query_params.get("a", "high")).lower(), # a or adaptability
             "theory_of_mind": st.query_params.get("theory_of_mind", st.query_params.get("tom", "high")).lower() # tom or theory_of_mind
         }
         
-        # Pre-configured study settings
-        st.session_state.scenario_choice = st.query_params.get("scenario", st.query_params.get("s", list(st.session_state.scenarios.keys())[0]))
+        # Extract Prolific parameters if available
+        st.session_state.prolific_params = {
+            "PROLIFIC_PID": st.query_params.get("PROLIFIC_PID"),
+            "STUDY_ID": st.query_params.get("STUDY_ID"),
+            "SESSION_ID": st.query_params.get("SESSION_ID")
+        }
         
-        # Auto-select agent based on intervention dimensions (NEW LOGIC)
-        if st.query_params.get("ai_agent") or st.query_params.get("agent"):
-            # Manual agent selection via URL
-            st.session_state.agent_choice_1 = st.query_params.get("ai_agent", st.query_params.get("agent", list(st.session_state.agent_dict.keys())[0]))
-        else:
-            # Auto-select agent based on intervention dimensions
-            st.session_state.agent_choice_1 = find_matching_agent(st.session_state.interventions, st.session_state.agent_dict)
+        # Scenario mapping for user-friendly URLs
+        scenario_mapping = {
+            "hiring_competitive": "job_interview_competitive",
+            "hiring_cooperative": "job_interview_cooperative", 
+            "travel_restrictions": "[ai-liedar] 0612_all_exp2_public_image_paraphrase_0_20",
+            "laptop_shopping": "[ai-liedar] 0612_all_exp2_benefits_need_paraphrase_0_13",
+            "business_collab": "[ai-liedar] 0612_all_exp2_emotion_paraphrase_0_19"
+        }
+        
+        # Pre-configured study settings with scenario mapping
+        scenario_param = st.query_params.get("scenario", st.query_params.get("s", "hiring_competitive"))
+        # Map user-friendly name to actual codename, fallback to direct lookup if not in mapping
+        st.session_state.scenario_choice = scenario_mapping.get(scenario_param, scenario_param)
+        
+        # Validate scenario exists, fallback to first available if not found
+        if st.session_state.scenario_choice not in st.session_state.scenarios:
+            st.session_state.scenario_choice = list(st.session_state.scenarios.keys())[0]
+        
+        # Auto-select agent based on intervention dimensions
+        st.session_state.agent_choice_1 = find_matching_agent(st.session_state.interventions, st.session_state.agent_dict)
         
         st.session_state.max_turns = 20  # Maximum conversation turns
         
@@ -516,8 +536,9 @@ def display_user_role_simple() -> None:
     if st.session_state.scenario_choice in st.session_state.scenarios:
         current_scenario = st.session_state.scenarios[st.session_state.scenario_choice]
         
-        # Debug info (can be removed later)
-        if st.sidebar.checkbox("Show Debug Info", value=False):
+        # Debug info (only for researchers, not participants)
+        participant_mode_debug = st.query_params.get("participant", st.query_params.get("p", "false")).lower() == "true"
+        if not participant_mode_debug and st.sidebar.checkbox("Show Debug Info", value=False):
             st.sidebar.write("**Scenario Data Structure:**")
             st.sidebar.json(current_scenario)
         
@@ -544,10 +565,96 @@ def display_user_role_simple() -> None:
             clean_goal = re.sub(r'([a-z])([A-Z])', r'\1 \2', clean_goal)  # Add space between cases
             
             if clean_goal:
-                # Use markdown instead of st.info to preserve formatting
+                # Enhanced formatting with highlighting for important sections
+                formatted_goal = clean_goal
+                
+                # Add proper line breaks and section formatting
+                # Break before major sections like "Salary:" and "Starting Date:"
+                formatted_goal = re.sub(
+                    r'\b(Salary|Starting Date|Start Date):', 
+                    r'<br><br><strong style="color: #495057; font-size: 18px;">\1:</strong> ', 
+                    formatted_goal, 
+                    flags=re.IGNORECASE
+                )
+                
+                # Add line breaks before sentences that start with key phrases
+                formatted_goal = re.sub(
+                    r'\s+(Your salary|Your starting date|These are the only)\b', 
+                    r'<br>\1', 
+                    formatted_goal, 
+                    flags=re.IGNORECASE
+                )
+                
+                # Add line breaks before "Do not" only when it starts a new sentence (after period)
+                formatted_goal = re.sub(
+                    r'\.\s+(Do not)', 
+                    r'. <br>\1', 
+                    formatted_goal, 
+                    flags=re.IGNORECASE
+                )
+                
+                # Add line breaks before "There are X different" patterns
+                formatted_goal = re.sub(
+                    r'\s+(There are \d+ different)', 
+                    r'<br>\1', 
+                    formatted_goal, 
+                    flags=re.IGNORECASE
+                )
+                
+                # Highlight [IMPORTANT] tags with strong visual emphasis
+                formatted_goal = re.sub(
+                    r'\[IMPORTANT\](.*?)(?=\[|$)', 
+                    r'<div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 8px 12px; margin: 8px 0; border-radius: 4px;"><strong>🚨 IMPORTANT:</strong> \1</div>', 
+                    formatted_goal, 
+                    flags=re.DOTALL
+                )
+                
+                # Highlight "Your goal is to" sentences for specific scenarios
+                formatted_goal = re.sub(
+                    r'(Your goal is to[^.]*\.)', 
+                    r'<div style="background-color: #e7f3ff; border-left: 4px solid #0d6efd; padding: 8px 12px; margin: 8px 0; border-radius: 4px;"><strong>🎯 \1</strong></div>', 
+                    formatted_goal, 
+                    flags=re.IGNORECASE
+                )
+                
+                # Highlight numerical values (salary, points, etc.) with subtle grey background
+                formatted_goal = re.sub(
+                    r'(\$\d{1,3}(?:,\d{3})*|\d{1,3}(?:,\d{3})*\s*points?)', 
+                    r'<strong style="background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px;">\1</strong>', 
+                    formatted_goal
+                )
+                
+                # Highlight dates (June 1, July 15, etc.)
+                formatted_goal = re.sub(
+                    r'\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}\b', 
+                    r'<strong style="background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px;">\g<0></strong>', 
+                    formatted_goal, 
+                    flags=re.IGNORECASE
+                )
+                
+                # Highlight key action words
+                key_words = ['negotiate', 'convince', 'persuade', 'achieve', 'obtain', 'secure', 'maximize', 'minimize']
+                for word in key_words:
+                    formatted_goal = re.sub(
+                        f'\\b({word})\\b', 
+                        r'<strong style="color: #0d6efd;">\1</strong>', 
+                        formatted_goal, 
+                        flags=re.IGNORECASE
+                    )
+                
+                # Use enhanced styling with better visual hierarchy
                 st.markdown(f"""
-                <div style="background-color: #d1ecf1; border: 1px solid #bee5eb; border-radius: 0.375rem; padding: 0.75rem; margin: 1rem 0;">
-                    {clean_goal}
+                <div style="
+                    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                    border: 2px solid #dee2e6;
+                    border-radius: 8px;
+                    padding: 20px;
+                    margin: 16px 0;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                ">
+                    <div style="font-size: 16px; line-height: 1.6; color: #212529;">
+                        {formatted_goal}
+                    </div>
                 </div>
                 """, unsafe_allow_html=True)
             else:
@@ -555,26 +662,6 @@ def display_user_role_simple() -> None:
         else:
             st.warning("No goal information available for this scenario")
         
-        # Show AI agent basic information
-        if st.session_state.agent_choice_1 in st.session_state.agent_dict:
-            ai_agent = st.session_state.agent_dict[st.session_state.agent_choice_1]
-            st.markdown("### 🤖 **AI Conversation Partner**")
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown(f"**Age**: {ai_agent.get('age', 'Unknown')}")
-            with col2:
-                st.markdown(f"**Occupation**: {ai_agent.get('occupation', 'Unknown')}")
-            
-            # Show intervention dimensions and selected agent (for verification)
-            with st.expander("🔧 Agent Selection Details (Debug)", expanded=False):
-                st.markdown("**URL Intervention Dimensions:**")
-                st.json(st.session_state.interventions)
-                st.markdown("**Selected Agent Profile:**")
-                st.markdown(f"Agent Key: `{st.session_state.agent_choice_1}`")
-                personality_snippet = ai_agent.get('personality_and_values', '')[:300] + "..."
-                st.markdown(f"Personality: {personality_snippet}")
-            
-            st.markdown("You will be conversing with this AI agent. The conversation will begin when you send your first message.")
 
 
 def display_conversation_history():
@@ -654,13 +741,397 @@ def simulate_ai_response(human_message: str) -> str:
         return "I apologize, but I'm having trouble responding right now. Please try again."
 
 
+def display_post_study_survey() -> dict:
+    """Display post-study survey and return responses"""
+    st.markdown("---")
+    st.markdown("## 📋 **Post-Study Survey**")
+    st.markdown("Please answer the following questions about your interaction with the AI agent.")
+    
+    survey_responses = {}
+    
+    # Initialize slider interaction tracking in session state
+    if "slider_interactions" not in st.session_state:
+        st.session_state.slider_interactions = {}
+    
+    # Add instruction for users about slider interaction
+    st.info("📌 **Note**: Please click or drag each slider to indicate your response, even if you want to keep the default middle position.")
+    
+    # Manipulation Checks Section
+    st.markdown("### **Manipulation Checks**")
+    st.markdown("*Think about the AI agent you just interacted with. Please rate how well each statement describes the AI:*")
+    st.markdown("**1 = Strongly disagree, 2 = Disagree, 3 = Neutral, 4 = Agree, 5 = Strongly agree**")
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.markdown("**The AI clearly explained its reasoning and decision-making process.**")
+    with col2:
+        survey_responses['transparency'] = st.selectbox(
+            "", 
+            options=[1, 2, 3, 4, 5], 
+            format_func=lambda x: {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
+            key="transparency_check",
+            label_visibility="collapsed"
+        )
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.markdown("**The AI communicated in a friendly and caring manner.**")
+    with col2:
+        survey_responses['warmth'] = st.selectbox(
+            "", 
+            options=[1, 2, 3, 4, 5], 
+            format_func=lambda x: {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
+            key="warmth_check",
+            label_visibility="collapsed"
+        )
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.markdown("**The AI seemed to understand my perspective and intentions.**")
+    with col2:
+        survey_responses['theory_of_mind'] = st.selectbox(
+            "", 
+            options=[1, 2, 3, 4, 5], 
+            format_func=lambda x: {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
+            key="tom_check",
+            label_visibility="collapsed"
+        )
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.markdown("**The AI was flexible in its approach to our conversations.**")
+    with col2:
+        survey_responses['adaptability'] = st.selectbox(
+            "", 
+            options=[1, 2, 3, 4, 5], 
+            format_func=lambda x: {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
+            key="adaptability_check",
+            label_visibility="collapsed"
+        )
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.markdown("**The AI seemed well-informed about the topics we discussed.**")
+    with col2:
+        survey_responses['expertise'] = st.selectbox(
+            "", 
+            options=[1, 2, 3, 4, 5], 
+            format_func=lambda x: {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
+            key="expertise_check",
+            label_visibility="collapsed"
+        )
+    
+    st.markdown("---")
+    
+    # Interaction Outcome Section
+    st.markdown("### **Interaction Outcome**")
+    
+    st.markdown("**How successful were you in achieving your goals in this scenario?**")
+    def mark_goals_interaction():
+        st.session_state.slider_interactions["goals"] = True
+    
+    survey_responses['goals'] = st.slider(
+        "", 
+        min_value=1, max_value=7, value=4,
+        format="%d",
+        help="1 = Completely unsuccessful, 7 = Completely successful",
+        key="goals_slider",
+        label_visibility="collapsed",
+        on_change=mark_goals_interaction
+    )
+    
+    # Add a confirmation button for midpoint selection
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        if st.session_state.slider_interactions.get("goals", False):
+            st.caption("✅ 1 = Completely unsuccessful → 7 = Completely successful")
+        else:
+            st.caption("⏸️ 1 = Completely unsuccessful → 7 = Completely successful")
+    with col2:
+        if not st.session_state.slider_interactions.get("goals", False):
+            if st.button("Confirm Selection", key="confirm_goals", help="Click to confirm your slider choice"):
+                st.session_state.slider_interactions["goals"] = True
+                st.rerun()
+    
+    st.markdown("**How satisfied are you with the outcome of this negotiation?**")
+    def mark_satisfaction_interaction():
+        st.session_state.slider_interactions["satisfaction"] = True
+    
+    survey_responses['satisfaction'] = st.slider(
+        "", 
+        min_value=1, max_value=7, value=4,
+        format="%d",
+        help="1 = Very dissatisfied, 7 = Very satisfied",
+        key="satisfaction_slider",
+        label_visibility="collapsed",
+        on_change=mark_satisfaction_interaction
+    )
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        if st.session_state.slider_interactions.get("satisfaction", False):
+            st.caption("✅ 1 = Very dissatisfied → 7 = Very satisfied")
+        else:
+            st.caption("⏸️ 1 = Very dissatisfied → 7 = Very satisfied")
+    with col2:
+        if not st.session_state.slider_interactions.get("satisfaction", False):
+            if st.button("Confirm Selection", key="confirm_satisfaction", help="Click to confirm your slider choice"):
+                st.session_state.slider_interactions["satisfaction"] = True
+                st.rerun()
+    
+    st.markdown("**How successfully did you resolve any conflicts that arose?**")
+    def mark_conflict_interaction():
+        st.session_state.slider_interactions["conflict_resolve"] = True
+    
+    survey_responses['conflict_resolve'] = st.slider(
+        "", 
+        min_value=1, max_value=7, value=4,
+        format="%d",
+        help="1 = Not at all, 7 = Completely",
+        key="conflict_slider",
+        label_visibility="collapsed",
+        on_change=mark_conflict_interaction
+    )
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        if st.session_state.slider_interactions.get("conflict_resolve", False):
+            st.caption("✅ 1 = Not at all → 7 = Completely")
+        else:
+            st.caption("⏸️ 1 = Not at all → 7 = Completely")
+    with col2:
+        if not st.session_state.slider_interactions.get("conflict_resolve", False):
+            if st.button("Confirm Selection", key="confirm_conflict", help="Click to confirm your slider choice"):
+                st.session_state.slider_interactions["conflict_resolve"] = True
+                st.rerun()
+    
+    st.markdown("**How natural and realistic did the AI agent seem during your interaction?**")
+    def mark_believability_interaction():
+        st.session_state.slider_interactions["believability"] = True
+    
+    survey_responses['believability'] = st.slider(
+        "", 
+        min_value=1, max_value=7, value=4,
+        format="%d",
+        help="1 = Not at all, 7 = Completely",
+        key="believability_slider",
+        label_visibility="collapsed",
+        on_change=mark_believability_interaction
+    )
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        if st.session_state.slider_interactions.get("believability", False):
+            st.caption("✅ 1 = Not at all → 7 = Completely")
+        else:
+            st.caption("⏸️ 1 = Not at all → 7 = Completely")
+    with col2:
+        if not st.session_state.slider_interactions.get("believability", False):
+            if st.button("Confirm Selection", key="confirm_believability", help="Click to confirm your slider choice"):
+                st.session_state.slider_interactions["believability"] = True
+                st.rerun()
+    
+    st.markdown("**How well did you feel the AI agent built upon and engaged with your points and ideas during the interaction?**")
+    def mark_transactivity_interaction():
+        st.session_state.slider_interactions["transactivity"] = True
+    
+    survey_responses['transactivity'] = st.slider(
+        "", 
+        min_value=1, max_value=5, value=3,
+        format="%d",
+        help="1 = Mostly ignored, 3 = Surface-level acknowledged, 5 = Meaningfully engaged",
+        key="transactivity_slider",
+        label_visibility="collapsed",
+        on_change=mark_transactivity_interaction
+    )
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        if st.session_state.slider_interactions.get("transactivity", False):
+            st.caption("✅ 1 = Mostly ignored my talking points • 3 = Surface-level acknowledged what I said but didn't engage with my points • 5 = Meaningfully engaged with my points and incorporated them into its talking points")
+        else:
+            st.caption("⏸️ 1 = Mostly ignored my talking points • 3 = Surface-level acknowledged what I said but didn't engage with my points • 5 = Meaningfully engaged with my points and incorporated them into its talking points")
+    with col2:
+        if not st.session_state.slider_interactions.get("transactivity", False):
+            if st.button("Confirm Selection", key="confirm_transactivity", help="Click to confirm your slider choice"):
+                st.session_state.slider_interactions["transactivity"] = True
+                st.rerun()
+    
+    st.markdown("**How truthful was the AI agent during your interaction?**")
+    def mark_truthfulness_interaction():
+        st.session_state.slider_interactions["truthfulness"] = True
+    
+    survey_responses['truthfulness'] = st.slider(
+        "", 
+        min_value=1, max_value=7, value=4,
+        format="%d",
+        help="1 = Not at all, 7 = Completely",
+        key="truthfulness_slider",
+        label_visibility="collapsed",
+        on_change=mark_truthfulness_interaction
+    )
+    
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        if st.session_state.slider_interactions.get("truthfulness", False):
+            st.caption("✅ 1 = Not at all → 7 = Completely")
+        else:
+            st.caption("⏸️ 1 = Not at all → 7 = Completely")
+    with col2:
+        if not st.session_state.slider_interactions.get("truthfulness", False):
+            if st.button("Confirm Selection", key="confirm_truthfulness", help="Click to confirm your slider choice"):
+                st.session_state.slider_interactions["truthfulness"] = True
+                st.rerun()
+    
+    return survey_responses
+
+
 def simple_user_study_interface() -> None:
     """Simple user study interface with manual conversation flow"""
     initialize_simple_session_state()
     
+    # Hide sidebar for participants
+    participant_mode = st.query_params.get("participant", st.query_params.get("p", "false")).lower() == "true"
+    if participant_mode:
+        st.markdown("""
+        <style>
+        section[data-testid="stSidebar"] {display: none !important;}
+        .css-1d391kg {display: none !important;}
+        .css-1y4p8pa {padding-left: 1rem !important;}
+        .css-1lcbmhc {display: none !important;}
+        .css-1outpf7 {display: none !important;}
+        .css-164nlkn {display: none !important;}
+        div[data-testid="stSidebarNav"] {display: none !important;}
+        </style>
+        """, unsafe_allow_html=True)
+    
     # Page header
     st.title("🔬 Human-AI Conversation Study")
-    st.markdown("Welcome to our research study! Please read your role carefully and engage naturally in the conversation.")
+    
+    # Check if in participant mode
+    participant_mode = st.query_params.get("participant", st.query_params.get("p", "false")).lower() == "true"
+    
+    if not participant_mode:
+        # Show researcher dashboard first
+        st.markdown("## 🔍 **Researcher Dashboard**")
+        st.markdown("Quick access to saved conversation data and exports.")
+        
+        # Database viewing section for researchers
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            if st.button("📊 Database Summary", use_container_width=True):
+                try:
+                    from ui.database_utils import print_database_summary
+                    # Capture output in a string buffer
+                    import io
+                    import contextlib
+                    
+                    output_buffer = io.StringIO()
+                    with contextlib.redirect_stdout(output_buffer):
+                        print_database_summary()
+                    
+                    summary_text = output_buffer.getvalue()
+                    st.text(summary_text)
+                    
+                except Exception as e:
+                    st.error(f"Error accessing database: {str(e)}")
+        
+        with col2:
+            if st.button("🔎 Browse Episodes", use_container_width=True):
+                try:
+                    from ui.database_utils import get_user_study_episodes, parse_episode_reasoning
+                    
+                    episodes = get_user_study_episodes()
+                    
+                    if episodes:
+                        st.markdown(f"**Found {len(episodes)} user study episodes:**")
+                        
+                        # Create a selectbox for episode details
+                        episode_options = {}
+                        for ep in episodes[-20:]:  # Show last 20 episodes
+                            episode_data = parse_episode_reasoning(ep)
+                            interventions = episode_data.get('interventions', {})
+                            transparency = interventions.get('transparency', 'unknown')
+                            turns = len(ep.messages)
+                            label = f"{ep.pk[:12]}... | {transparency} | {turns} turns | {ep.tag}"
+                            episode_options[label] = ep.pk
+                        
+                        if episode_options:
+                            selected_label = st.selectbox("Select episode to view details:", list(episode_options.keys()))
+                            selected_episode_id = episode_options[selected_label]
+                            
+                            if st.button("View Episode Details"):
+                                # Show detailed episode information
+                                from ui.database_utils import view_episode_details
+                                import io
+                                import contextlib
+                                
+                                output_buffer = io.StringIO()
+                                with contextlib.redirect_stdout(output_buffer):
+                                    view_episode_details(selected_episode_id)
+                                
+                                details_text = output_buffer.getvalue()
+                                st.text(details_text)
+                    else:
+                        st.warning("No user study episodes found in database")
+                        
+                except Exception as e:
+                    st.error(f"Error browsing episodes: {str(e)}")
+        
+        with col3:
+            try:
+                from ui.database_utils import get_user_study_episodes, export_episodes_to_enhanced_csv, export_episodes_to_enhanced_json
+                
+                episodes = get_user_study_episodes()
+                
+                if episodes:
+                    st.markdown(f"**Found {len(episodes)} episodes**")
+                    
+                    # Show export options outside the button
+                    export_format = st.radio("Export format:", ["CSV (for analysis)", "JSON (complete data)"], key="export_format_radio")
+                    
+                    if st.button("💾 Export Now", key="export_db", use_container_width=True):
+                        if "CSV" in export_format:
+                            filename = export_episodes_to_enhanced_csv(episodes)
+                            st.success(f"✅ Exported to CSV: {filename}")
+                            
+                            # Provide download
+                            with open(filename, 'r', encoding='utf-8') as f:
+                                st.download_button(
+                                    label="📥 Download CSV",
+                                    data=f.read(),
+                                    file_name=os.path.basename(filename),
+                                    mime="text/csv",
+                                    key="download_csv"
+                                )
+                        else:
+                            filename = export_episodes_to_enhanced_json(episodes)
+                            st.success(f"✅ Exported to JSON: {filename}")
+                            
+                            # Provide download
+                            with open(filename, 'r', encoding='utf-8') as f:
+                                st.download_button(
+                                    label="📥 Download JSON",
+                                    data=f.read(),
+                                    file_name=os.path.basename(filename),
+                                    mime="application/json",
+                                    key="download_json"
+                                )
+                else:
+                    st.warning("No episodes found to export")
+                    st.button("💾 Export Database", disabled=True, use_container_width=True)
+                    
+            except Exception as e:
+                st.error(f"Error with database export: {str(e)}")
+                st.button("💾 Export Database", disabled=True, use_container_width=True)
+        
+        st.markdown("---")
+        st.markdown("## 👥 **User Study Interface**")
+        st.markdown("Use the interface below to test the user study flow or conduct actual sessions.")
+    
+    else:
+        st.markdown("Welcome to our research study! Please read your role carefully and engage naturally in the conversation.")
     
     st.markdown("---")
     
@@ -675,14 +1146,34 @@ def simple_user_study_interface() -> None:
         display_conversation_history()
         st.markdown("---")
     
-    # Always show human input area
-    st.markdown("### 💬 **Your Message**")
+    # Combined AI agent info and conversation input area
+    if not st.session_state.conversation_history:
+        # Show AI agent info and conversation starter
+        if st.session_state.agent_choice_1 in st.session_state.agent_dict:
+            ai_agent = st.session_state.agent_dict[st.session_state.agent_choice_1]
+            st.markdown("### 💬 **Start the Conversation**")
+            st.markdown(f"You will be conversing with an AI agent (**{ai_agent.get('occupation', 'Assistant')}**). Type your message below to begin.")
+            
+            # Show debug info for researchers only
+            participant_mode = st.query_params.get("participant", st.query_params.get("p", "false")).lower() == "true"
+            if not participant_mode:
+                with st.expander("🔧 Agent Selection Details (Debug)", expanded=False):
+                    st.markdown("**URL Intervention Dimensions:**")
+                    st.json(st.session_state.interventions)
+                    st.markdown("**Selected Agent Profile:**")
+                    st.markdown(f"Agent Key: `{st.session_state.agent_choice_1}`")
+                    st.markdown(f"Intervention Mapping: {st.session_state.interventions}")
+        else:
+            st.markdown("### 💬 **Start the Conversation**")
+    else:
+        st.markdown("### 💬 **Your Response**")
     
     human_input = st.text_area(
-        "Type your message:", 
+        label="", 
         placeholder="Type what you want to say...",
         height=100,
-        key=f"human_input_{st.session_state.turn_number}"
+        key=f"human_input_{st.session_state.turn_number}",
+        label_visibility="collapsed"
     )
     
     # Show buttons based on conversation state
@@ -751,21 +1242,21 @@ def simple_user_study_interface() -> None:
                     # Check if we've now reached max turns after AI response
                     if len(st.session_state.conversation_history) >= st.session_state.max_turns:
                         st.session_state.study_active = False
-                        st.success(f"Conversation completed! Maximum turns ({st.session_state.max_turns}) reached. Thank you for participating!")
                         
-                        # Automatically save to database when max turns reached
+                        # Silently save conversation data (survey will trigger final save)
                         try:
                             session_id = save_conversation_to_redis(
                                 st.session_state.conversation_history,
                                 st.session_state.interventions,
                                 st.session_state.scenario_choice,
-                                st.session_state.agent_choice_1
+                                st.session_state.agent_choice_1,
+                                st.session_state.get('prolific_params', {}),
+                                None  # No survey responses yet
                             )
                             if session_id:
                                 st.session_state.saved_session_id = session_id
-                                st.info("💾 Conversation automatically saved to database.")
                         except Exception as e:
-                            st.error(f"Warning: Could not auto-save to database: {str(e)}")
+                            st.error(f"Warning: Could not save conversation data: {str(e)}")
                     
                     st.rerun()
                 else:
@@ -774,21 +1265,21 @@ def simple_user_study_interface() -> None:
         with col2:
             if st.button("End Conversation", type="secondary"):
                 st.session_state.study_active = False
-                st.success("Conversation ended. Thank you for participating!")
                 
-                # Automatically save to database when user ends conversation
+                # Silently save conversation data (survey will trigger final save)
                 try:
                     session_id = save_conversation_to_redis(
                         st.session_state.conversation_history,
                         st.session_state.interventions,
                         st.session_state.scenario_choice,
-                        st.session_state.agent_choice_1
+                        st.session_state.agent_choice_1,
+                        st.session_state.get('prolific_params', {}),
+                        None  # No survey responses yet
                     )
                     if session_id:
                         st.session_state.saved_session_id = session_id
-                        st.info("💾 Conversation automatically saved to database.")
                 except Exception as e:
-                    st.error(f"Warning: Could not auto-save to database: {str(e)}")
+                    st.error(f"Warning: Could not save conversation data: {str(e)}")
     
     # Show conversation stats
     if st.session_state.conversation_history:
@@ -796,128 +1287,73 @@ def simple_user_study_interface() -> None:
         turn_count = len(st.session_state.conversation_history)  # Each message = 1 turn
         st.markdown(f"**Conversation turns**: {turn_count}/{st.session_state.max_turns}")
     
-    # Show auto-save confirmation (conversation already saved automatically)
+    # Show post-study survey and completion flow
     if not st.session_state.study_active and st.session_state.conversation_history:
-        if st.session_state.get('saved_session_id'):
-            st.success("✅ Conversation automatically saved to database!")
-            st.markdown(f"**Session ID:** `{st.session_state.saved_session_id}`")
-        
-        # Database viewing section (only for researchers, not participants)
-        participant_mode = st.query_params.get("participant", "false").lower() == "true"
-        
-        if not participant_mode:
+        if not st.session_state.survey_completed:
+            # Show survey first
             st.markdown("---")
-            st.markdown("### 🔍 **View Saved Data**")
-            st.markdown("Explore previously saved conversations and database contents:")
+            survey_responses = display_post_study_survey()
             
-            col1, col2, col3 = st.columns(3)
+            # Validate all questions are answered
+            required_selectbox_questions = [
+                'transparency', 'warmth', 'theory_of_mind', 'adaptability', 'expertise'
+            ]
+            required_slider_questions = [
+                'goals', 'satisfaction', 'conflict_resolve', 'believability', 'transactivity', 'truthfulness'
+            ]
             
-            with col1:
-                if st.button("📊 Database Summary", use_container_width=True):
-                    try:
-                        from ui.database_utils import print_database_summary
-                        # Capture output in a string buffer
-                        import io
-                        import contextlib
-                        
-                        output_buffer = io.StringIO()
-                        with contextlib.redirect_stdout(output_buffer):
-                            print_database_summary()
-                        
-                        summary_text = output_buffer.getvalue()
-                        st.text(summary_text)
-                        
-                    except Exception as e:
-                        st.error(f"Error accessing database: {str(e)}")
+            # Check selectbox questions
+            missing_selectbox = [q for q in required_selectbox_questions if q not in survey_responses or survey_responses[q] is None]
             
-            with col2:
-                if st.button("🔎 Browse Episodes", use_container_width=True):
-                    try:
-                        from ui.database_utils import get_user_study_episodes, parse_episode_reasoning
-                        
-                        episodes = get_user_study_episodes()
-                        
-                        if episodes:
-                            st.markdown(f"**Found {len(episodes)} user study episodes:**")
-                            
-                            # Create a selectbox for episode details
-                            episode_options = {}
-                            for ep in episodes[-20:]:  # Show last 20 episodes
-                                episode_data = parse_episode_reasoning(ep)
-                                interventions = episode_data.get('interventions', {})
-                                transparency = interventions.get('transparency', 'unknown')
-                                turns = len(ep.messages)
-                                label = f"{ep.pk[:12]}... | {transparency} | {turns} turns | {ep.tag}"
-                                episode_options[label] = ep.pk
-                            
-                            if episode_options:
-                                selected_label = st.selectbox("Select episode to view details:", list(episode_options.keys()))
-                                selected_episode_id = episode_options[selected_label]
-                                
-                                if st.button("View Episode Details"):
-                                    # Show detailed episode information
-                                    from ui.database_utils import view_episode_details
-                                    import io
-                                    import contextlib
-                                    
-                                    output_buffer = io.StringIO()
-                                    with contextlib.redirect_stdout(output_buffer):
-                                        view_episode_details(selected_episode_id)
-                                    
-                                    details_text = output_buffer.getvalue()
-                                    st.text(details_text)
-                        else:
-                            st.warning("No user study episodes found in database")
-                            
-                    except Exception as e:
-                        st.error(f"Error browsing episodes: {str(e)}")
+            # Check slider interactions
+            missing_sliders = [q for q in required_slider_questions if not st.session_state.slider_interactions.get(q, False)]
             
-            with col3:
-                try:
-                    from ui.database_utils import get_user_study_episodes, export_episodes_to_enhanced_csv, export_episodes_to_enhanced_json
+            missing_questions = missing_selectbox + missing_sliders
+            
+            if missing_questions:
+                if missing_sliders:
+                    st.error(f"⚠️ Please move all sliders and complete all questions before submitting. You need to interact with {len(missing_sliders)} slider(s) and complete {len(missing_selectbox)} dropdown(s).")
+                else:
+                    st.error(f"⚠️ Please complete all survey questions before submitting. Missing: {len(missing_questions)} question(s)")
+                st.button("Submit Survey & Complete Study", disabled=True, use_container_width=True)
+            else:
+                if st.button("Submit Survey & Complete Study", type="primary", use_container_width=True):
+                    # Save survey responses
+                    st.session_state.survey_responses = survey_responses
+                    st.session_state.survey_completed = True
                     
-                    episodes = get_user_study_episodes()
-                    
-                    if episodes:
-                        st.markdown(f"**Found {len(episodes)} episodes**")
-                        
-                        # Show export options outside the button
-                        export_format = st.radio("Export format:", ["CSV (for analysis)", "JSON (complete data)"], key="export_format_radio")
-                        
-                        if st.button("💾 Export Now", key="export_db", use_container_width=True):
-                            if "CSV" in export_format:
-                                filename = export_episodes_to_enhanced_csv(episodes)
-                                st.success(f"✅ Exported to CSV: {filename}")
-                                
-                                # Provide download
-                                with open(filename, 'r', encoding='utf-8') as f:
-                                    st.download_button(
-                                        label="📥 Download CSV",
-                                        data=f.read(),
-                                        file_name=os.path.basename(filename),
-                                        mime="text/csv",
-                                        key="download_csv"
-                                    )
-                            else:
-                                filename = export_episodes_to_enhanced_json(episodes)
-                                st.success(f"✅ Exported to JSON: {filename}")
-                                
-                                # Provide download
-                                with open(filename, 'r', encoding='utf-8') as f:
-                                    st.download_button(
-                                        label="📥 Download JSON",
-                                        data=f.read(),
-                                        file_name=os.path.basename(filename),
-                                        mime="application/json",
-                                        key="download_json"
-                                    )
-                    else:
-                        st.warning("No episodes found to export")
-                        st.button("💾 Export Database", disabled=True, use_container_width=True)
-                        
-                except Exception as e:
-                    st.error(f"Error with database export: {str(e)}")
-                    st.button("💾 Export Database", disabled=True, use_container_width=True)
+                    # Save everything to database with survey results
+                    try:
+                        session_id = save_conversation_to_redis(
+                            st.session_state.conversation_history,
+                            st.session_state.interventions,
+                            st.session_state.scenario_choice,
+                            st.session_state.agent_choice_1,
+                            st.session_state.get('prolific_params', {}),
+                            survey_responses
+                        )
+                        if session_id:
+                            st.session_state.saved_session_id = session_id
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"Error saving survey results: {str(e)}")
+        else:
+            # Show completion confirmation after survey
+            participant_mode = st.query_params.get("participant", st.query_params.get("p", "false")).lower() == "true"
+            if participant_mode:
+                # Show Prolific ID for participants
+                prolific_pid = st.session_state.get('prolific_params', {}).get('PROLIFIC_PID')
+                if prolific_pid:
+                    st.success("✅ Study completed successfully! Thank you for your participation.")
+                    st.markdown(f"**Your Prolific ID:** `{prolific_pid}`")
+                    st.markdown("You may now close this window and return to Prolific to complete your submission.")
+                else:
+                    st.success("✅ Study completed successfully! Thank you for your participation.")
+            else:
+                # Show session ID for researchers
+                st.success("✅ Study completed and saved to database!")
+                st.markdown(f"**Session ID:** `{st.session_state.saved_session_id}`")
+        
         
         # Show comprehensive study configuration for transparency (only for researchers)
         if not participant_mode:
@@ -930,7 +1366,6 @@ def simple_user_study_interface() -> None:
                     "agent_attributes": {
                         "name": f"{agent_profile_data.get('first_name', '')} {agent_profile_data.get('last_name', '')}".strip(),
                         "occupation": agent_profile_data.get('occupation', ''),
-                        "personality_and_values": agent_profile_data.get('personality_and_values', ''),
                         "decision_making_style": agent_profile_data.get('decision_making_style', '')
                     },
                     "conversation_stats": {

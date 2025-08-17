@@ -203,13 +203,16 @@ def export_episodes_to_enhanced_csv(episodes: List[EpisodeLog], filename: Option
     with open(filename, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         
-        # Write comprehensive header
+        # Write comprehensive header including survey responses
         writer.writerow([
             'episode_id', 'session_id', 'timestamp', 'tag', 'environment', 'ai_agent',
             'transparency', 'warmth', 'expertise', 'adaptability', 'theory_of_mind',
-            'agent_name', 'agent_occupation', 'agent_age', 'personality_and_values',
+            'agent_name', 'agent_occupation', 'agent_age',
             'decision_making_style', 'big_five', 'mbti',
             'total_turns', 'human_messages', 'ai_messages', 'avg_message_length',
+            'survey_transparency', 'survey_warmth', 'survey_theory_of_mind', 'survey_adaptability', 'survey_expertise',
+            'survey_goals', 'survey_satisfaction', 'survey_conflict_resolve', 'survey_believability', 'survey_transactivity', 'survey_truthfulness',
+            'prolific_pid', 'prolific_study_id', 'prolific_session_id',
             'turn_number', 'speaker', 'action_type', 'content', 'content_length'
         ])
         
@@ -219,6 +222,8 @@ def export_episodes_to_enhanced_csv(episodes: List[EpisodeLog], filename: Option
             interventions = episode_data.get('interventions', {})
             agent_attrs = episode_data.get('agent_attributes', {})
             conv_stats = episode_data.get('conversation_stats', {})
+            survey_data = episode_data.get('survey_responses', {})
+            prolific_data = episode_data.get('prolific_data', {})
             
             # Get AI agent name (not human_participant)
             ai_agent = next((agent for agent in episode.agents if agent != 'human_participant'), 'unknown')
@@ -241,7 +246,6 @@ def export_episodes_to_enhanced_csv(episodes: List[EpisodeLog], filename: Option
                         agent_attrs.get('name', ''),
                         agent_attrs.get('occupation', ''),
                         agent_attrs.get('age', ''),
-                        agent_attrs.get('personality_and_values', ''),
                         agent_attrs.get('decision_making_style', ''),
                         agent_attrs.get('big_five', ''),
                         agent_attrs.get('mbti', ''),
@@ -249,6 +253,20 @@ def export_episodes_to_enhanced_csv(episodes: List[EpisodeLog], filename: Option
                         conv_stats.get('human_messages', 0),
                         conv_stats.get('ai_messages', 0),
                         conv_stats.get('avg_message_length', 0),
+                        survey_data.get('transparency', ''),
+                        survey_data.get('warmth', ''),
+                        survey_data.get('theory_of_mind', ''),
+                        survey_data.get('adaptability', ''),
+                        survey_data.get('expertise', ''),
+                        survey_data.get('goals', ''),
+                        survey_data.get('satisfaction', ''),
+                        survey_data.get('conflict_resolve', ''),
+                        survey_data.get('believability', ''),
+                        survey_data.get('transactivity', ''),
+                        survey_data.get('truthfulness', ''),
+                        prolific_data.get('PROLIFIC_PID', ''),
+                        prolific_data.get('STUDY_ID', ''),
+                        prolific_data.get('SESSION_ID', ''),
                         turn_idx + 1,
                         speaker,
                         action_type,

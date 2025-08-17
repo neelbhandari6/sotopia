@@ -167,7 +167,6 @@ Each user study conversation is now saved as an enhanced `EpisodeLog` with compr
       "name": "Sarah Johnson",
       "occupation": "Marketing Manager",
       "age": "28",
-      "personality_and_values": "High Transparency, Low Warmth personality...",
       "decision_making_style": "Analytical and data-driven...",
       "big_five": "High openness, moderate conscientiousness...",
       "mbti": "INTJ"
@@ -177,6 +176,24 @@ Each user study conversation is now saved as an enhanced `EpisodeLog` with compr
       "human_messages": 6,
       "ai_messages": 6,
       "avg_message_length": 78.5
+    },
+    "survey_responses": {
+      "transparency": 4,
+      "warmth": 3,
+      "theory_of_mind": 5,
+      "adaptability": 4,
+      "expertise": 4,
+      "goals": 6,
+      "satisfaction": 5,
+      "conflict_resolve": 4,
+      "believability": 5,
+      "transactivity": 3,
+      "truthfulness": 6
+    },
+    "prolific_data": {
+      "PROLIFIC_PID": "abc123def456",
+      "STUDY_ID": "study_789",
+      "SESSION_ID": "session_101112"
     }
   },
   "rewards": [0.0, 0.0]
@@ -188,8 +205,161 @@ Each user study conversation is now saved as an enhanced `EpisodeLog` with compr
 - **`interventions`**: All five intervention dimensions stored systematically  
 - **`agent_attributes`**: Complete AI agent profile information
 - **`conversation_stats`**: Automatically calculated conversation metrics
+- **`survey_responses`**: Post-study survey data with manipulation checks and outcome measures
+- **`prolific_data`**: Prolific participant IDs and study metadata
 - **`models`**: Now includes all intervention dimensions for easier querying
 - **`session_id`**: Unique identifier for tracking individual study sessions
+
+## 📋 **Survey Data Access**
+
+### **Survey Data Structure**
+The post-study survey captures participant perceptions and is stored in `reasoning.survey_responses`:
+
+```json
+{
+  "survey_responses": {
+    "transparency": 4,        // Manipulation check: AI explained reasoning (1-5 scale)
+    "warmth": 3,             // Manipulation check: AI was friendly/caring (1-5 scale)  
+    "theory_of_mind": 5,     // Manipulation check: AI understood perspective (1-5 scale)
+    "adaptability": 4,       // Manipulation check: AI was flexible (1-5 scale)
+    "expertise": 4,          // Manipulation check: AI was well-informed (1-5 scale)
+    "goals": 6,              // Outcome: Success in achieving goals (1-7 scale)
+    "satisfaction": 5,       // Outcome: Satisfaction with negotiation (1-7 scale)
+    "conflict_resolve": 4,   // Outcome: Success resolving conflicts (1-7 scale)
+    "believability": 5,      // Outcome: AI seemed natural/realistic (1-7 scale)
+    "transactivity": 3,      // Outcome: AI engaged with user points (1-5 scale)
+    "truthfulness": 6        // Outcome: AI was truthful (1-7 scale)
+  }
+}
+```
+
+### **Survey Question Details**
+
+**Manipulation Checks (1-5 Likert Scale):**
+1. **transparency**: "The AI clearly explained its reasoning and decision-making process"
+2. **warmth**: "The AI communicated in a friendly and caring manner"  
+3. **theory_of_mind**: "The AI seemed to understand my perspective and intentions"
+4. **adaptability**: "The AI was flexible in its approach to our conversations"
+5. **expertise**: "The AI seemed well-informed about the topics we discussed"
+
+**Interaction Outcomes:**
+1. **goals**: "How successful were you in achieving your goals?" (1-7 scale)
+2. **satisfaction**: "How satisfied are you with the outcome?" (1-7 scale)
+3. **conflict_resolve**: "How successfully did you resolve conflicts?" (1-7 scale)
+4. **believability**: "How natural/realistic did the AI seem?" (1-7 scale)
+5. **transactivity**: "How well did the AI engage with your points?" (1-5 scale)
+6. **truthfulness**: "How truthful was the AI?" (1-7 scale)
+
+### **Accessing Survey Data**
+
+**Method 1: Enhanced CSV Export (Recommended for Analysis)**
+```bash
+# Access via web interface (researcher mode - without p=true parameter)
+# 1. Go to user study page
+# 2. Scroll to "View Saved Data" section  
+# 3. Choose "CSV (for analysis)"
+# 4. Click "💾 Export Now"
+# 5. Download CSV file
+
+# CSV includes survey columns:
+# survey_transparency, survey_warmth, survey_theory_of_mind, survey_adaptability, survey_expertise
+# survey_goals, survey_satisfaction, survey_conflict_resolve, survey_believability, survey_transactivity, survey_truthfulness
+# prolific_pid, prolific_study_id, prolific_session_id
+```
+
+**Method 2: Enhanced Database Script**
+```bash
+# Export all episodes with survey data
+python scripts/enhanced_database_access.py --format csv --output survey_data.csv
+
+# Filter by survey responses (requires JSON export for complex filtering)
+python scripts/enhanced_database_access.py --format json --output survey_data.json
+```
+
+**Method 3: Python API**
+```python
+from ui.database_utils import get_user_study_episodes, parse_episode_reasoning
+
+# Get all episodes with survey data
+episodes = get_user_study_episodes()
+
+# Extract survey responses
+for episode in episodes:
+    episode_data = parse_episode_reasoning(episode)
+    survey_data = episode_data.get('survey_responses', {})
+    prolific_data = episode_data.get('prolific_data', {})
+    
+    if survey_data:  # Only episodes with completed surveys
+        print(f"Episode {episode.pk}:")
+        print(f"  Manipulation Checks: transparency={survey_data.get('transparency')}, warmth={survey_data.get('warmth')}")
+        print(f"  Outcomes: goals={survey_data.get('goals')}, satisfaction={survey_data.get('satisfaction')}")
+        print(f"  Prolific ID: {prolific_data.get('PROLIFIC_PID', 'N/A')}")
+```
+
+**Method 4: JSON Export (Complete Data)**
+```bash
+# Access via web interface
+# 1. Choose "JSON (complete data)"  
+# 2. Survey data will be in: episodes[].study_data.survey_responses
+# 3. Prolific data will be in: episodes[].study_data.prolific_data
+```
+
+### **Survey Data Analysis Tips**
+
+**CSV Analysis (Excel/R/Python):**
+```r
+# R example
+data <- read.csv("user_study_enhanced_YYYYMMDD_HHMMSS.csv")
+
+# Analyze manipulation checks vs interventions
+library(dplyr)
+data %>% 
+  group_by(transparency, warmth) %>%
+  summarise(
+    mean_transparency_check = mean(survey_transparency, na.rm=TRUE),
+    mean_warmth_check = mean(survey_warmth, na.rm=TRUE),
+    mean_satisfaction = mean(survey_satisfaction, na.rm=TRUE)
+  )
+```
+
+**Python Analysis:**
+```python
+import pandas as pd
+
+# Load data
+df = pd.read_csv("user_study_enhanced_YYYYMMDD_HHMMSS.csv")
+
+# Get episode-level data (remove duplicates from message-level format)
+episodes_df = df.drop_duplicates(subset=['episode_id'])
+
+# Analyze intervention effectiveness
+intervention_analysis = episodes_df.groupby(['transparency', 'warmth']).agg({
+    'survey_transparency': 'mean',
+    'survey_warmth': 'mean', 
+    'survey_goals': 'mean',
+    'survey_satisfaction': 'mean'
+}).round(2)
+
+print(intervention_analysis)
+```
+
+### **Prolific Integration**
+When participants come from Prolific, their IDs are automatically captured and stored:
+
+```json
+{
+  "prolific_data": {
+    "PROLIFIC_PID": "participant_unique_id",
+    "STUDY_ID": "your_study_id",
+    "SESSION_ID": "session_identifier"
+  }
+}
+```
+
+**Accessing Prolific Data:**
+- Available in CSV export as: `prolific_pid`, `prolific_study_id`, `prolific_session_id`
+- Enables linking Sotopia data with Prolific demographics and payment
+- Shown to participants in completion message for verification
 
 ### **Intervention Dimensions**
 The system now tracks five intervention dimensions:
@@ -296,11 +466,17 @@ The enhanced CSV export now includes comprehensive data:
 
 **AI Agent Attributes:**
 - `agent_name`, `agent_occupation`, `agent_age`
-- `personality_and_values`, `decision_making_style`
-- `big_five`, `mbti`
+- `decision_making_style`, `big_five`, `mbti`
 
 **Conversation Metrics:**
 - `total_turns`, `human_messages`, `ai_messages`, `avg_message_length`
+
+**Survey Data (Post-Study):**
+- `survey_transparency`, `survey_warmth`, `survey_theory_of_mind`, `survey_adaptability`, `survey_expertise`
+- `survey_goals`, `survey_satisfaction`, `survey_conflict_resolve`, `survey_believability`, `survey_transactivity`, `survey_truthfulness`
+
+**Prolific Integration:**
+- `prolific_pid`, `prolific_study_id`, `prolific_session_id`
 
 **Message-Level Data:**
 - `turn_number`, `speaker`, `action_type`, `content`, `content_length`

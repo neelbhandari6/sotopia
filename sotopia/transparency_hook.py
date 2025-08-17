@@ -49,9 +49,10 @@ class TransparentLLMAgent(LLMAgent):
 
         # Build conversation history with mandatory CoT instruction
         cot_instruction = (
-            "When you compose your next action, first include your PRIVATE reasoning "
-            "wrapped inside <THINK> </THINK> tags, immediately followed by what the "
-            "other participant will actually see. You MUST do this every turn."
+            "CRITICAL: Your response MUST include your reasoning process. In the JSON argument field, "
+            "format your response as: '<THINK>your detailed reasoning process</THINK>your actual response'. "
+            "Example: {\"action_type\": \"speak\", \"argument\": \"<THINK>I should be friendly and professional in this greeting</THINK>Hello! How can I help you today?\"} "
+            "This <THINK> format is MANDATORY for every single response."
         )
         history_body = "\n".join(y.to_natural_language() for _, y in self.inbox)
         history = f"{cot_instruction}\n{history_body}"
@@ -68,9 +69,14 @@ class TransparentLLMAgent(LLMAgent):
         )
 
         # Hide CoT if transparency is low
+        print(f"DEBUG: About to check transparency. self.transparency = '{self.transparency}'")
+        print(f"DEBUG: self.transparency.startswith('low') = {self.transparency.startswith('low')}")
         if self.transparency.startswith("low"):
             print("DEBUG: stripping thoughts")
             action.argument = strip_thoughts(action.argument)
+        else:
+            print("DEBUG: keeping thoughts (transparency is high)")
+        print(f"DEBUG: Final action.argument: {action.argument[:100]}...")
         return action
 
 
