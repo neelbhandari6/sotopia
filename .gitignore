@@ -138,6 +138,9 @@ deprecated/*
 
 *.csv
 *.jsonl
+
+# Scripts with API keys or sensitive information
+start_streamlit.sh
 #backup
 backup/*
 
