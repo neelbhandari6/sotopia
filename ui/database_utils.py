@@ -203,7 +203,7 @@ def export_episodes_to_enhanced_csv(episodes: List[EpisodeLog], filename: Option
     with open(filename, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         
-        # Write comprehensive header including survey responses
+        # Write comprehensive header including survey responses and personality data
         writer.writerow([
             'episode_id', 'session_id', 'timestamp', 'tag', 'environment', 'ai_agent',
             'transparency', 'warmth', 'expertise', 'adaptability', 'theory_of_mind',
@@ -213,6 +213,8 @@ def export_episodes_to_enhanced_csv(episodes: List[EpisodeLog], filename: Option
             'survey_transparency', 'survey_warmth', 'survey_theory_of_mind', 'survey_adaptability', 'survey_expertise',
             'survey_goals', 'survey_satisfaction', 'survey_conflict_resolve', 'survey_believability', 'survey_transactivity', 'survey_truthfulness',
             'prolific_pid', 'prolific_study_id', 'prolific_session_id',
+            'personality_participant_id', 'personality_extroversion_score', 'personality_agreeableness_score', 
+            'personality_extroversion_level', 'personality_agreeableness_level', 'personality_type',
             'turn_number', 'speaker', 'action_type', 'content', 'content_length'
         ])
         
@@ -267,6 +269,12 @@ def export_episodes_to_enhanced_csv(episodes: List[EpisodeLog], filename: Option
                         prolific_data.get('PROLIFIC_PID', ''),
                         prolific_data.get('STUDY_ID', ''),
                         prolific_data.get('SESSION_ID', ''),
+                        episode_data.get('personality_assessment', {}).get('participant_id', ''),
+                        episode_data.get('personality_assessment', {}).get('scores', {}).get('extroversion', ''),
+                        episode_data.get('personality_assessment', {}).get('scores', {}).get('agreeableness', ''),
+                        episode_data.get('personality_assessment', {}).get('classification', {}).get('extroversion_level', ''),
+                        episode_data.get('personality_assessment', {}).get('classification', {}).get('agreeableness_level', ''),
+                        episode_data.get('personality_assessment', {}).get('classification', {}).get('personality_type', ''),
                         turn_idx + 1,
                         speaker,
                         action_type,

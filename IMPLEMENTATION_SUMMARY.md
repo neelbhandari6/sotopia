@@ -150,4 +150,87 @@ python scripts/enhanced_database_access.py --recent-days 7 --format csv
 
 ---
 
-*Last Updated: August 13, 2025*
+## 🔧 **Recent Fixes and Improvements** (August 18, 2025)
+
+### **Assignment Balance Dashboard System** ✅ **RESOLVED**
+
+**Issues Fixed:**
+1. **Redis Connection Problem**: Dashboard showed "No assignments recorded yet" despite having user study data
+   - **Root Cause**: System connecting to standard Redis (port 6379) instead of Redis Stack (port 6380)
+   - **Solution**: Set `REDIS_OM_URL="redis://localhost:6380"` to use Redis Stack with JSON support
+
+2. **Duplicate Session Creation**: Single participants appeared to have multiple conversations within seconds
+   - **Root Cause**: `save_conversation_to_redis()` called multiple times (conversation end + survey submission)
+   - **Solution**: Only save once after survey completion with complete data
+
+3. **Assignment Tracker Index Issues**: Persistent Redis OM index errors causing system failures
+   - **Root Cause**: Complex Redis OM model with unreliable indexing
+   - **Solution**: Replaced with direct Redis JSON operations using simple key pattern
+
+**Implementation Changes:**
+- **Simplified Assignment Tracking**: Removed Redis OM dependency, now uses direct `JSON.GET/SET`
+- **Clean Session Flow**: Single save per session after survey completion
+- **Reliable Dashboard**: Assignment balance now works consistently without index errors
+
+### **Environment Configuration Requirements** ⚠️ **CRITICAL**
+
+**Required Setup:**
+```bash
+# Redis Stack with JSON support (REQUIRED)
+docker run -d -p 6380:6379 --name sotopia-redis-json redis/redis-stack-server:latest
+
+# Environment variable (MUST be set permanently)
+export REDIS_OM_URL="redis://localhost:6380"
+echo 'export REDIS_OM_URL="redis://localhost:6380"' >> ~/.bashrc
+```
+
+**Data Migration**: Old assignment records migrated from `:ui.assignment_tracker.PersonalityAssignmentTracker:*` to `assignment_tracker:personality:intervention` format.
+
+### **Assignment Balance Dashboard Features** ✅ **WORKING**
+
+Now properly displays:
+- **Total Assignments**: Count of completed participant sessions with personality data
+- **Personality Distribution**: Balance across different personality types
+- **Agent Condition Balance**: Assignment distribution across intervention combinations
+- **Real-time Statistics**: Live updates as new sessions complete
+- **Export Functionality**: CSV/JSON exports for research analysis
+
+### **Key Debugging Commands**
+
+```python
+# Check assignment vs episode count
+from ui.database_utils import get_user_study_episodes
+from ui.assignment_tracker import BalancedAssignmentManager
+
+episodes = get_user_study_episodes()
+stats = BalancedAssignmentManager.get_assignment_statistics()
+print(f"Episodes: {len(episodes)}, Assignments: {stats['total_assignments']}")
+
+# Verify Redis connection
+import os
+print(f"REDIS_OM_URL: {os.getenv('REDIS_OM_URL')}")  # Should be redis://localhost:6380
+```
+
+### **Important Warnings** ⚠️
+
+1. **Redis Port Confusion**: 
+   - Port 6379 = Standard Redis (NO JSON support) → Will cause errors
+   - Port 6380 = Redis Stack (WITH JSON support) → Required for system
+
+2. **Assignment Recording Logic**:
+   - Only records for participant sessions (`p=true`) with completed personality assessments
+   - Researcher sessions (`p=false`) don't record assignments by design
+   - Missing assignments usually indicate personality assessment wasn't completed
+
+3. **Database Cleanup**:
+   - After clearing Redis, run `Migrator().run()` to recreate indices
+   - Assignment tracker now uses direct Redis, less affected by index issues
+
+### **Files Modified:**
+- **`ui/pages/user_study.py`**: Fixed duplicate session creation (lines 1773-1783, 1821-1833)
+- **`ui/assignment_tracker.py`**: Completely rewritten for direct Redis operations
+- **`IMPLEMENTATION_SUMMARY.md`**: Updated with recent fixes (this document)
+
+---
+
+*Last Updated: August 18, 2025*

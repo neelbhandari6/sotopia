@@ -5,7 +5,15 @@ import csv
 import os
 import asyncio
 from datetime import datetime
-from typing import Any
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    # dotenv not installed, skip loading .env file
+    pass
+from typing import Any, Dict
 from uuid import uuid4
 from ui.rendering import (
     get_scenarios,
@@ -15,6 +23,138 @@ from ui.rendering import (
 from sotopia.database import EpisodeLog, AgentProfile, EnvironmentProfile
 from sotopia.transparency_hook import make_transparency_agent
 from sotopia.messages import Observation, AgentAction
+
+# Import assignment tracking
+try:
+    from ui.assignment_tracker import BalancedAssignmentManager
+except ImportError as e:
+    st.error(f"Error importing assignment tracker: {e}")
+    BalancedAssignmentManager = None
+
+
+# Personality Assessment Functions (moved from separate file)
+PERSONALITY_QUESTIONS = {
+    # Extroversion items (E)
+    1: {"text": "Am the life of the party.", "dimension": "extroversion", "reverse": False},
+    6: {"text": "Don't talk a lot.", "dimension": "extroversion", "reverse": True},
+    11: {"text": "Feel comfortable around people.", "dimension": "extroversion", "reverse": False},
+    16: {"text": "Keep in the background.", "dimension": "extroversion", "reverse": True},
+    21: {"text": "Start conversations.", "dimension": "extroversion", "reverse": False},
+    26: {"text": "Have little to say.", "dimension": "extroversion", "reverse": True},
+    31: {"text": "Talk to a lot of different people at parties.", "dimension": "extroversion", "reverse": False},
+    36: {"text": "Don't like to draw attention to myself.", "dimension": "extroversion", "reverse": True},
+    41: {"text": "Don't mind being the center of attention.", "dimension": "extroversion", "reverse": False},
+    46: {"text": "Am quiet around strangers.", "dimension": "extroversion", "reverse": True},
+    
+    # Agreeableness items (A)
+    2: {"text": "Feel little concern for others.", "dimension": "agreeableness", "reverse": True},
+    7: {"text": "Am interested in people.", "dimension": "agreeableness", "reverse": False},
+    12: {"text": "Insult people.", "dimension": "agreeableness", "reverse": True},
+    17: {"text": "Sympathize with others' feelings.", "dimension": "agreeableness", "reverse": False},
+    22: {"text": "Am not interested in other people's problems.", "dimension": "agreeableness", "reverse": True},
+    27: {"text": "Have a soft heart.", "dimension": "agreeableness", "reverse": False},
+    32: {"text": "Am not really interested in others.", "dimension": "agreeableness", "reverse": True},
+    37: {"text": "Take time out for others.", "dimension": "agreeableness", "reverse": False},
+    42: {"text": "Feel others' emotions.", "dimension": "agreeableness", "reverse": False},
+    47: {"text": "Make people feel at ease.", "dimension": "agreeableness", "reverse": False},
+}
+
+
+class PersonalityAssessmentTracker:
+    """Track personality assessment data in Redis"""
+    
+    @staticmethod
+    def save_assessment(participant_id: str, responses: Dict[int, int], scores: Dict[str, int]) -> str:
+        """Save personality assessment to Redis database"""
+        try:
+            assessment_data = {
+                "participant_id": participant_id,
+                "timestamp": datetime.now().isoformat(),
+                "responses": responses,
+                "scores": scores,
+                "assessment_type": "big_five_extroversion_agreeableness"
+            }
+            
+            # Create a temporary episode log to store assessment data
+            assessment_log = EpisodeLog(
+                environment="personality_assessment",
+                agents=[participant_id],
+                tag=f"personality_assessment_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{participant_id[:8]}",
+                models=["personality_assessment"],
+                messages=[],  # No conversation messages for assessment
+                reasoning=json.dumps(assessment_data, indent=2),
+                rewards=[0.0]
+            )
+            
+            assessment_log.save()
+            return assessment_log.pk
+            
+        except Exception as e:
+            st.error(f"Error saving personality assessment: {str(e)}")
+            return ""
+    
+    @staticmethod
+    def get_assessment(participant_id: str) -> Dict[str, Any]:
+        """Retrieve existing personality assessment for a participant"""
+        try:
+            # Find assessment episodes for this participant
+            all_episodes = EpisodeLog.find().all()
+            for episode in all_episodes:
+                if (episode.environment == "personality_assessment" and 
+                    participant_id in episode.agents):
+                    try:
+                        assessment_data = json.loads(episode.reasoning)
+                        if assessment_data.get("participant_id") == participant_id:
+                            return assessment_data
+                    except json.JSONDecodeError:
+                        continue
+            return {}
+        except Exception as e:
+            print(f"Error retrieving personality assessment: {e}")
+            return {}
+
+
+def calculate_personality_scores(responses: Dict[int, int]) -> Dict[str, int]:
+    """Calculate Big Five personality scores using the provided formulas."""
+    # Extroversion calculation: E = 20 + (1) - (6) + (11) - (16) + (21) - (26) + (31) - (36) + (41) - (46)
+    extroversion = (20 + 
+                   responses.get(1, 3) - responses.get(6, 3) + 
+                   responses.get(11, 3) - responses.get(16, 3) + 
+                   responses.get(21, 3) - responses.get(26, 3) + 
+                   responses.get(31, 3) - responses.get(36, 3) + 
+                   responses.get(41, 3) - responses.get(46, 3))
+    
+    # Agreeableness calculation: A = 14 - (2) + (7) - (12) + (17) - (22) + (27) - (32) + (37) + (42) + (47)
+    agreeableness = (14 - responses.get(2, 3) + responses.get(7, 3) - 
+                    responses.get(12, 3) + responses.get(17, 3) - 
+                    responses.get(22, 3) + responses.get(27, 3) - 
+                    responses.get(32, 3) + responses.get(37, 3) + 
+                    responses.get(42, 3) + responses.get(47, 3))
+    
+    return {
+        "extroversion": extroversion,
+        "agreeableness": agreeableness
+    }
+
+
+def classify_personality(extroversion: int, agreeableness: int) -> Dict[str, str]:
+    """Classify personality into quartiles for balanced assignment."""
+    # Define quartile cutoffs (these may need adjustment based on population data)
+    ext_cutoff = 30  # Median split for extroversion
+    agree_cutoff = 42  # Median split for agreeableness
+    
+    ext_level = "high" if extroversion >= ext_cutoff else "low"
+    agree_level = "high" if agreeableness >= agree_cutoff else "low"
+    
+    personality_type = f"{ext_level}_ext_{agree_level}_agree"
+    
+    return {
+        "extroversion_level": ext_level,
+        "agreeableness_level": agree_level,
+        "personality_type": personality_type,
+        "extroversion_score": extroversion,
+        "agreeableness_score": agreeableness
+    }
 
 
 def load_local_scenarios() -> dict[str, dict[Any, Any]]:
@@ -310,7 +450,8 @@ def save_conversation_to_redis(conversation_history: list, interventions: dict, 
                 "avg_message_length": sum(len(msg.get('content', '')) for msg in conversation_history) / len(conversation_history) if conversation_history else 0
             },
             "prolific_data": prolific_params if prolific_params else {},
-            "survey_responses": survey_responses if survey_responses else {}
+            "survey_responses": survey_responses if survey_responses else {},
+            "personality_assessment": st.session_state.get("personality_data", {})
         }
         
         # Create structured model tags that include all intervention dimensions
@@ -437,8 +578,10 @@ def export_conversation_to_files(conversation_history: list, interventions: dict
         st.error(f"❌ Failed to export files: {str(e)}")
 
 
-def find_matching_agent(interventions: dict, agent_dict: dict) -> str:
-    """Find agent profile that matches the specified intervention dimensions"""
+def find_matching_agent(interventions: dict, agent_dict: dict, personality_classification: dict = None) -> str:
+    """Find agent profile that matches intervention dimensions, with optional personality-based balancing"""
+    
+    # Step 1: Find all agents that match the intervention pattern (same as before)
     target_transparency = interventions.get("transparency", "low").title()  # "High" or "Low"
     target_warmth = interventions.get("warmth", "low").title()
     target_expertise = interventions.get("expertise", "high").title()  
@@ -448,19 +591,47 @@ def find_matching_agent(interventions: dict, agent_dict: dict) -> str:
     # Build target pattern to match in personality_and_values
     target_pattern = f"{target_transparency} Transparency, {target_warmth} Warmth, {target_adaptability} Adaptability, {target_expertise} Expertise, {target_theory_of_mind} Theory of Mind"
     
-    # Search through all agents to find matching personality
+    # Find all matching agents (not just the first one)
+    matching_agents = []
     for agent_key, agent_data in agent_dict.items():
         personality = agent_data.get("personality_and_values", "")
         if target_pattern in personality:
-            print(f"DEBUG: Found matching agent: {agent_key}")
-            print(f"DEBUG: Target pattern: {target_pattern}")
-            print(f"DEBUG: Agent personality: {personality[:200]}...")
-            return agent_key
+            matching_agents.append(agent_key)
     
-    # If no exact match found, return first available agent
-    print(f"DEBUG: No matching agent found for pattern: {target_pattern}")
-    print(f"DEBUG: Available agents: {list(agent_dict.keys())}")
-    return list(agent_dict.keys())[0]
+    # If no agents match the pattern, fall back to all agents
+    if not matching_agents:
+        print(f"DEBUG: No matching agents found for pattern: {target_pattern}")
+        matching_agents = list(agent_dict.keys())
+    
+    print(f"DEBUG: Found {len(matching_agents)} matching agents for pattern")
+    
+    # Step 2: If personality classification is available, use balanced assignment among matching agents
+    if (personality_classification and BalancedAssignmentManager and 
+        personality_classification.get("personality_type") and len(matching_agents) > 1):
+        
+        try:
+            print(f"DEBUG: Using balanced assignment among {len(matching_agents)} matching agents")
+            intervention_key = BalancedAssignmentManager.get_intervention_combination_key(interventions)
+            personality_key = personality_classification.get("personality_type")
+            
+            # Get the least assigned agent among the matching ones
+            selected_agent = BalancedAssignmentManager.get_least_assigned_agent(
+                matching_agents, personality_key, intervention_key
+            )
+            
+            print(f"DEBUG: Balanced assignment selected: {selected_agent}")
+            return selected_agent
+            
+        except Exception as e:
+            print(f"DEBUG: Error in balanced assignment, using first matching agent: {e}")
+    
+    # Step 3: Default behavior - return first matching agent
+    selected_agent = matching_agents[0]
+    print(f"DEBUG: Using first matching agent: {selected_agent}")
+    print(f"DEBUG: Target pattern: {target_pattern}")
+    print(f"DEBUG: Agent personality: {agent_dict[selected_agent].get('personality_and_values', '')[:200]}...")
+    
+    return selected_agent
 
 
 def initialize_simple_session_state() -> None:
@@ -522,8 +693,62 @@ def initialize_simple_session_state() -> None:
         if st.session_state.scenario_choice not in st.session_state.scenarios:
             st.session_state.scenario_choice = list(st.session_state.scenarios.keys())[0]
         
-        # Auto-select agent based on intervention dimensions
-        st.session_state.agent_choice_1 = find_matching_agent(st.session_state.interventions, st.session_state.agent_dict)
+        # Check if personality assessment should be used (URL parameter or session state)
+        use_personality_assessment = st.query_params.get("survey", "false").lower() == "true"
+        personality_classification = None
+        
+        # Generate or get participant ID for personality tracking
+        if "participant_id" not in st.session_state:
+            st.session_state.participant_id = st.query_params.get("participant_id") or str(uuid4())
+        
+        # Load existing personality assessment if available
+        if PersonalityAssessmentTracker:
+            try:
+                assessment_data = PersonalityAssessmentTracker.get_assessment(st.session_state.participant_id)
+                if assessment_data and "scores" in assessment_data:
+                    scores = assessment_data["scores"]
+                    personality_classification = classify_personality(
+                        scores["extroversion"], scores["agreeableness"]
+                    )
+                    st.session_state.personality_data = {
+                        "participant_id": st.session_state.participant_id,
+                        "scores": scores,
+                        "classification": personality_classification
+                    }
+                    print(f"DEBUG: Loaded existing personality data for participant {st.session_state.participant_id}")
+                    print(f"DEBUG: Personality classification: {personality_classification}")
+            except Exception as e:
+                print(f"DEBUG: Error loading personality assessment: {e}")
+        
+        # Auto-select agent based on intervention dimensions (with personality balancing if available)
+        st.session_state.agent_choice_1 = find_matching_agent(
+            st.session_state.interventions, 
+            st.session_state.agent_dict,
+            personality_classification
+        )
+        
+        # Record the assignment if we have personality data and assignment tracker
+        if personality_classification and BalancedAssignmentManager:
+            try:
+                intervention_key = BalancedAssignmentManager.get_intervention_combination_key(
+                    st.session_state.interventions
+                )
+                personality_key = personality_classification.get("personality_type")
+                
+                BalancedAssignmentManager.record_assignment(
+                    st.session_state.agent_choice_1,
+                    personality_key,
+                    intervention_key,
+                    st.session_state.participant_id
+                )
+                print(f"DEBUG: Recorded balanced assignment for {st.session_state.participant_id}")
+            except Exception as e:
+                print(f"DEBUG: Error recording assignment: {e}")
+        else:
+            print(f"DEBUG: Assignment not recorded - personality_classification: {personality_classification is not None}, BalancedAssignmentManager: {BalancedAssignmentManager is not None}")
+        
+        # Store assessment requirement for flow control
+        st.session_state.requires_personality_assessment = use_personality_assessment
         
         st.session_state.max_turns = 20  # Maximum conversation turns
         
@@ -990,23 +1215,327 @@ def simple_user_study_interface() -> None:
     """Simple user study interface with manual conversation flow"""
     initialize_simple_session_state()
     
-    # Hide sidebar for participants
+    # Hide sidebar and navigation for participants (do this first!)
     participant_mode = st.query_params.get("participant", st.query_params.get("p", "false")).lower() == "true"
     if participant_mode:
         st.markdown("""
         <style>
+        /* Hide sidebar */
         section[data-testid="stSidebar"] {display: none !important;}
+        
+        /* Hide navigation bar and all related elements */
+        nav[data-testid="stNavigation"] {display: none !important;}
+        div[data-testid="stPageNavigation"] {display: none !important;}
+        div[data-testid="stSidebarNav"] {display: none !important;}
+        .st-emotion-cache-1gwvy71 {display: none !important;}
+        .st-emotion-cache-16txtl3 {display: none !important;}
+        
+        /* Hide any header navigation */
+        header[data-testid="stHeader"] {display: none !important;}
+        
+        /* Adjust main content area - wider for better radio button layout */
+        .main .block-container {
+            padding-left: 2rem !important; 
+            padding-right: 2rem !important;
+            max-width: 850px !important;
+            margin: 0 auto !important;
+        }
+        
+        /* Target all content containers */
+        .block-container {
+            max-width: 850px !important;
+            margin: 0 auto !important;
+        }
+        
+        /* Keep radio buttons in vertical layout but prevent text wrapping within each option */
+        div[data-testid="stRadio"] > div {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+        }
+        
+        /* Ensure radio button text doesn't wrap within each option and left align */
+        div[data-testid="stRadio"] label {
+            white-space: nowrap !important;
+            text-align: left !important;
+            justify-content: flex-start !important;
+        }
+        
+        /* Left align the radio button container */
+        div[data-testid="stRadio"] {
+            text-align: left !important;
+        }
+        
+        /* Make survey question text larger and more prominent */
+        .main .block-container p strong {
+            font-size: 1.1rem !important;
+            font-weight: 600 !important;
+            color: #262730 !important;
+            margin-bottom: 0.5rem !important;
+        }
+        
+        /* Reduce space between question text and radio buttons */
+        .main .block-container p {
+            margin-bottom: 0.3rem !important;
+        }
+        
+        /* Reduce space above radio buttons */
+        div[data-testid="stRadio"] {
+            margin-top: -0.5rem !important;
+            margin-bottom: 1rem !important;
+        }
+        
+        /* Ensure info boxes and text are also narrow */
+        .stAlert {
+            max-width: 100% !important;
+        }
+        .stApp > div:first-child {margin-left: 0 !important;}
+        
+        /* Legacy CSS classes */
         .css-1d391kg {display: none !important;}
         .css-1y4p8pa {padding-left: 1rem !important;}
         .css-1lcbmhc {display: none !important;}
         .css-1outpf7 {display: none !important;}
         .css-164nlkn {display: none !important;}
-        div[data-testid="stSidebarNav"] {display: none !important;}
         </style>
         """, unsafe_allow_html=True)
     
+    # Apply focused width only for non-participant mode (researchers)
+    if not participant_mode:
+        st.markdown("""
+        <style>
+        .main .block-container {
+            max-width: 700px !important;
+            margin: 0 auto !important;
+            padding-left: 2rem !important;
+            padding-right: 2rem !important;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+    
+    # Check if personality assessment is required and not yet completed
+    # BUT only block for participants, not researchers
+    if (st.session_state.get("requires_personality_assessment", False) and 
+        not st.session_state.get("personality_data") and 
+        participant_mode):  # Only block participants, not researchers
+        
+        # Personality assessment functions are now defined above in this file
+        
+        # Initialize assessment session state if needed
+        if "assessment_responses" not in st.session_state:
+            st.session_state.assessment_responses = {}
+        
+        st.title("📋 Personality Assessment")
+        st.info("""
+        Before starting the conversation, please complete this brief personality assessment.
+        
+        For each statement, indicate how accurately it describes you.
+        
+        Please answer honestly based on how you generally feel and behave.
+        """)
+        
+        # Display all questions first
+        for q_num in sorted(PERSONALITY_QUESTIONS.keys()):
+            question_data = PERSONALITY_QUESTIONS[q_num]
+            st.markdown(f"**{question_data['text']}**")
+            
+            # Create response options
+            response_options = [
+                "1 - Very Inaccurate",
+                "2 - Moderately Inaccurate", 
+                "3 - Neither Accurate nor Inaccurate",
+                "4 - Moderately Accurate",
+                "5 - Very Accurate"
+            ]
+            
+            # Get current response or default to None
+            current_response = st.session_state.assessment_responses.get(q_num, None)
+            
+            # Use radio buttons for easier selection
+            response = st.radio(
+                "",
+                options=response_options,
+                index=current_response - 1 if current_response is not None else None,
+                key=f"question_{q_num}",
+                label_visibility="collapsed",
+                horizontal=True
+            )
+            
+            # Update session state - convert response back to numeric value
+            if response is not None:
+                # Extract the numeric value from "1 - Very Inaccurate" format
+                numeric_response = int(response.split(" - ")[0])
+                st.session_state.assessment_responses[q_num] = numeric_response
+        
+        # Calculate progress AFTER all questions are rendered
+        total_questions = len(PERSONALITY_QUESTIONS)
+        completed_questions = len([q for q in st.session_state.assessment_responses.values() if q is not None])
+        
+        # Display progress
+        progress = completed_questions / total_questions
+        st.progress(progress)
+        st.markdown(f"**Progress:** {completed_questions}/{total_questions} questions completed")
+        
+        # Submit button
+        if completed_questions == total_questions:
+            if st.button("Submit", type="primary", use_container_width=True):
+                # Calculate scores
+                scores = calculate_personality_scores(st.session_state.assessment_responses)
+                classification = classify_personality(scores["extroversion"], scores["agreeableness"])
+                
+                # Save to session state
+                st.session_state.personality_data = {
+                    "participant_id": st.session_state.participant_id,
+                    "scores": scores,
+                    "classification": classification
+                }
+                
+                # Save to database
+                assessment_id = PersonalityAssessmentTracker.save_assessment(
+                    st.session_state.participant_id,
+                    st.session_state.assessment_responses, 
+                    scores
+                )
+                
+                if assessment_id:
+                    st.success("✅ Assessment completed! Proceeding to the study...")
+                    st.rerun()
+                else:
+                    st.error("Failed to save assessment. Please try again.")
+        else:
+            st.button("Submit", disabled=True, use_container_width=True)
+            remaining = total_questions - completed_questions
+            st.warning(f"Please complete all questions. {remaining} question(s) remaining.")
+        
+        return  # Stop here until assessment is completed (participants only)
+    
     # Page header
     st.title("🔬 Human-AI Conversation Study")
+    
+    # Show assignment tracker dashboard for researchers (when p=false)
+    if not participant_mode and BalancedAssignmentManager:
+        st.markdown("---")
+        st.markdown("### 📊 **Assignment Balance Dashboard**")
+        
+        try:
+            # Get assignment statistics
+            stats = BalancedAssignmentManager.get_assignment_statistics()
+            
+            # Always show the dashboard structure, even with no data
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.metric("Total Assignments", stats.get("total_assignments", 0))
+            
+            with col2:
+                st.metric("Personality Types", len(stats.get("personality_types", [])))
+            
+            with col3:
+                st.metric("Agent Conditions", len(stats.get("intervention_combinations", [])))
+            
+            if stats.get("total_assignments", 0) > 0:
+                
+                # Create detailed breakdown
+                if stats["assignment_balance"]:
+                    st.markdown("#### 🎯 **Detailed Assignment Breakdown**")
+                    
+                    # Group by personality type
+                    personality_data = {}
+                    for key, data in stats["assignment_balance"].items():
+                        personality_type = data["personality_type"]
+                        if personality_type not in personality_data:
+                            personality_data[personality_type] = {}
+                        
+                        personality_data[personality_type][data["intervention_combination"]] = data
+                    
+                    # Display in expandable sections
+                    for personality_type in sorted(personality_data.keys()):
+                        with st.expander(f"**{personality_type.replace('_', ' ').title()}** ({sum(combo['total'] for combo in personality_data[personality_type].values())} assignments)"):
+                            
+                            # Create a table for this personality type
+                            assignment_data = []
+                            for intervention_combo, data in personality_data[personality_type].items():
+                                # Parse intervention combination
+                                parts = intervention_combo.split('_')
+                                intervention_summary = []
+                                for i in range(0, len(parts), 2):
+                                    if i+1 < len(parts):
+                                        dimension = parts[i]
+                                        value = parts[i+1]
+                                        intervention_summary.append(f"{dimension.upper()}:{value}")
+                                
+                                assignment_data.append({
+                                    "Agent Condition": " | ".join(intervention_summary),
+                                    "Total Assignments": data["total"],
+                                    "Agent Breakdown": ", ".join([f"{agent}: {count}" for agent, count in data["agent_assignments"].items()]),
+                                    "Last Updated": data.get("updated_at", "Unknown")[:19] if data.get("updated_at") else "Unknown"
+                                })
+                            
+                            if assignment_data:
+                                import pandas as pd
+                                df = pd.DataFrame(assignment_data)
+                                st.dataframe(df, use_container_width=True)
+                            else:
+                                st.info("No assignments yet for this personality type.")
+                
+                # Balance analysis
+                st.markdown("#### ⚖️ **Balance Analysis**")
+                
+                # Calculate balance across personality types
+                personality_totals = {}
+                for data in stats["assignment_balance"].values():
+                    p_type = data["personality_type"]
+                    personality_totals[p_type] = personality_totals.get(p_type, 0) + data["total"]
+                
+                if personality_totals:
+                    # Create a bar chart
+                    import pandas as pd
+                    balance_df = pd.DataFrame(list(personality_totals.items()), 
+                                            columns=["Personality Type", "Assignments"])
+                    balance_df["Personality Type"] = balance_df["Personality Type"].str.replace("_", " ").str.title()
+                    
+                    st.bar_chart(balance_df.set_index("Personality Type"))
+                    
+                    # Show balance warnings
+                    max_assignments = max(personality_totals.values())
+                    min_assignments = min(personality_totals.values())
+                    balance_ratio = min_assignments / max_assignments if max_assignments > 0 else 1.0
+                    
+                    if balance_ratio < 0.7:
+                        st.warning(f"⚠️ **Assignment imbalance detected!** Ratio: {balance_ratio:.2f}")
+                        under_represented = [p_type for p_type, count in personality_totals.items() 
+                                           if count < max_assignments * 0.7]
+                        st.info(f"Under-represented: {', '.join(under_represented)}")
+                    else:
+                        st.success(f"✅ **Good balance!** Ratio: {balance_ratio:.2f}")
+                
+                # Export option
+                if st.button("📥 Export Assignment Report"):
+                    try:
+                        from ui.assignment_tracker import export_assignment_balance_report
+                        report_file = export_assignment_balance_report()
+                        if report_file:
+                            st.success(f"Report exported to: {report_file}")
+                        else:
+                            st.error("Failed to export report")
+                    except Exception as e:
+                        st.error(f"Export failed: {e}")
+                        
+            else:
+                st.markdown("#### 📋 **Getting Started**")
+                st.info("No assignments recorded yet. Start running studies to see balance data.")
+                st.markdown("**To populate this dashboard:**")
+                st.markdown("1. Run user studies with `p=true` (participant mode)")
+                st.markdown("2. Complete conversations and surveys") 
+                st.markdown("3. Assignment data will appear here automatically")
+                
+        except Exception as e:
+            st.error(f"Error loading assignment dashboard: {e}")
+            st.markdown("**Troubleshooting:**")
+            st.markdown("- Check that Redis is running: `redis-cli ping`")
+            st.markdown("- Verify Redis connection settings")
+            st.markdown("- Check if the database contains any data")
+        
+        st.markdown("---")
     
     # Check if in participant mode
     participant_mode = st.query_params.get("participant", st.query_params.get("p", "false")).lower() == "true"
@@ -1169,7 +1698,7 @@ def simple_user_study_interface() -> None:
         st.markdown("### 💬 **Your Response**")
     
     human_input = st.text_area(
-        label="", 
+        label="Your message", 
         placeholder="Type what you want to say...",
         height=100,
         key=f"human_input_{st.session_state.turn_number}",
@@ -1242,21 +1771,7 @@ def simple_user_study_interface() -> None:
                     # Check if we've now reached max turns after AI response
                     if len(st.session_state.conversation_history) >= st.session_state.max_turns:
                         st.session_state.study_active = False
-                        
-                        # Silently save conversation data (survey will trigger final save)
-                        try:
-                            session_id = save_conversation_to_redis(
-                                st.session_state.conversation_history,
-                                st.session_state.interventions,
-                                st.session_state.scenario_choice,
-                                st.session_state.agent_choice_1,
-                                st.session_state.get('prolific_params', {}),
-                                None  # No survey responses yet
-                            )
-                            if session_id:
-                                st.session_state.saved_session_id = session_id
-                        except Exception as e:
-                            st.error(f"Warning: Could not save conversation data: {str(e)}")
+                        # Note: Don't save here, wait for survey completion
                     
                     st.rerun()
                 else:
@@ -1265,21 +1780,7 @@ def simple_user_study_interface() -> None:
         with col2:
             if st.button("End Conversation", type="secondary"):
                 st.session_state.study_active = False
-                
-                # Silently save conversation data (survey will trigger final save)
-                try:
-                    session_id = save_conversation_to_redis(
-                        st.session_state.conversation_history,
-                        st.session_state.interventions,
-                        st.session_state.scenario_choice,
-                        st.session_state.agent_choice_1,
-                        st.session_state.get('prolific_params', {}),
-                        None  # No survey responses yet
-                    )
-                    if session_id:
-                        st.session_state.saved_session_id = session_id
-                except Exception as e:
-                    st.error(f"Warning: Could not save conversation data: {str(e)}")
+                # Note: Don't save here, wait for survey completion
     
     # Show conversation stats
     if st.session_state.conversation_history:
@@ -1322,7 +1823,7 @@ def simple_user_study_interface() -> None:
                     st.session_state.survey_responses = survey_responses
                     st.session_state.survey_completed = True
                     
-                    # Save everything to database with survey results
+                    # Save everything to database with survey results (ONLY SAVE HAPPENS HERE)
                     try:
                         session_id = save_conversation_to_redis(
                             st.session_state.conversation_history,
