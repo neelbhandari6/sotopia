@@ -13,7 +13,7 @@ try:
 except ImportError:
     # dotenv not installed, skip loading .env file
     pass
-from typing import Any, Dict
+from typing import Any
 from uuid import uuid4
 from ui.rendering import (
     get_scenarios,
@@ -24,137 +24,214 @@ from sotopia.database import EpisodeLog, AgentProfile, EnvironmentProfile
 from sotopia.transparency_hook import make_transparency_agent
 from sotopia.messages import Observation, AgentAction
 
-# Import assignment tracking
-try:
-    from ui.assignment_tracker import BalancedAssignmentManager
-except ImportError as e:
-    st.error(f"Error importing assignment tracker: {e}")
-    BalancedAssignmentManager = None
+# Import survey modules
+from ui.surveys.personality import (
+    PERSONALITY_QUESTIONS,
+    calculate_personality_scores,
+    classify_personality,
+    PersonalityAssessmentTracker
+)
+from ui.surveys.questions import (
+    AI_EXPERIENCE_QUESTIONS,
+    AI_ATTITUDE_QUESTIONS, 
+    TRUST_NEGOTIATION_QUESTIONS,
+    render_question,
+    display_post_study_survey,
+    count_completed_responses
+)
+
+# Assignment tracking disabled (personality-based balancing removed)
+
+def get_scenario_occupation(scenario_codename: str) -> str:
+    """Get appropriate agent occupation based on scenario context"""
+    if scenario_codename.startswith('[ai-liedar]'):
+        if 'public_image_paraphrase' in scenario_codename:  # travel_restrictions
+            return "Health Representative"
+        elif 'benefits_need_paraphrase' in scenario_codename:  # laptop_shopping
+            return "Sales Assistant"
+        elif 'emotion_paraphrase' in scenario_codename:  # business_collab
+            return "Personal Assistant"
+        else:
+            return "Assistant"  # Generic fallback for other ai-liedar scenarios
+    elif 'job_interview' in scenario_codename:
+        return "Hiring Manager"
+    else:
+        return "Assistant"  # Generic fallback
 
 
-# Personality Assessment Functions (moved from separate file)
-PERSONALITY_QUESTIONS = {
-    # Extroversion items (E)
-    1: {"text": "Am the life of the party.", "dimension": "extroversion", "reverse": False},
-    6: {"text": "Don't talk a lot.", "dimension": "extroversion", "reverse": True},
-    11: {"text": "Feel comfortable around people.", "dimension": "extroversion", "reverse": False},
-    16: {"text": "Keep in the background.", "dimension": "extroversion", "reverse": True},
-    21: {"text": "Start conversations.", "dimension": "extroversion", "reverse": False},
-    26: {"text": "Have little to say.", "dimension": "extroversion", "reverse": True},
-    31: {"text": "Talk to a lot of different people at parties.", "dimension": "extroversion", "reverse": False},
-    36: {"text": "Don't like to draw attention to myself.", "dimension": "extroversion", "reverse": True},
-    41: {"text": "Don't mind being the center of attention.", "dimension": "extroversion", "reverse": False},
-    46: {"text": "Am quiet around strangers.", "dimension": "extroversion", "reverse": True},
+def generate_inline_salary_chart(goal_text: str, scenario_codename: str):
+    """Generate inline salary bar chart"""
+    import re
+    import pandas as pd
+    import altair as alt
     
-    # Agreeableness items (A)
-    2: {"text": "Feel little concern for others.", "dimension": "agreeableness", "reverse": True},
-    7: {"text": "Am interested in people.", "dimension": "agreeableness", "reverse": False},
-    12: {"text": "Insult people.", "dimension": "agreeableness", "reverse": True},
-    17: {"text": "Sympathize with others' feelings.", "dimension": "agreeableness", "reverse": False},
-    22: {"text": "Am not interested in other people's problems.", "dimension": "agreeableness", "reverse": True},
-    27: {"text": "Have a soft heart.", "dimension": "agreeableness", "reverse": False},
-    32: {"text": "Am not really interested in others.", "dimension": "agreeableness", "reverse": True},
-    37: {"text": "Take time out for others.", "dimension": "agreeableness", "reverse": False},
-    42: {"text": "Feel others' emotions.", "dimension": "agreeableness", "reverse": False},
-    47: {"text": "Make people feel at ease.", "dimension": "agreeableness", "reverse": False},
-}
-
-
-class PersonalityAssessmentTracker:
-    """Track personality assessment data in Redis"""
+    # Parse salary information
+    salary_data = []
+    salary_pattern = r'\$(\d{2,3}),000\s+gives\s+you\s+(\d+)\s*points?'
+    salary_matches = re.findall(salary_pattern, goal_text)
     
-    @staticmethod
-    def save_assessment(participant_id: str, responses: Dict[int, int], scores: Dict[str, int]) -> str:
-        """Save personality assessment to Redis database"""
+    for match in salary_matches:
+        salary_amount = int(match[0])
+        points = int(match[1])
+        salary_data.append({
+            'Salary': f'${salary_amount},000',
+            'Amount': salary_amount,
+            'Points': points
+        })
+    
+    # Sort salary data by salary amount (ascending - lowest to highest)
+    salary_data.sort(key=lambda x: x['Amount'])
+    
+    if salary_data:
+        st.markdown("##### 💰 **Salary Points**")
+        # Create horizontal salary bar chart using Altair
+        salary_df = pd.DataFrame(salary_data)
+        salary_chart = alt.Chart(salary_df).mark_bar().encode(
+            x=alt.X('Points:Q', title='Points'),
+            y=alt.Y('Salary:N', title='Salary', sort=alt.EncodingSortField(field='Amount', order='ascending')),
+            color=alt.Color('Points:Q', scale=alt.Scale(scheme='blues'), legend=None),
+            tooltip=['Salary', 'Points']
+        ).properties(
+            height=180,
+            width=400
+        )
+        st.altair_chart(salary_chart, use_container_width=True)
+
+
+def generate_inline_date_chart(goal_text: str, scenario_codename: str):
+    """Generate inline date bar chart"""
+    import re
+    import pandas as pd
+    import altair as alt
+    from datetime import datetime
+    
+    # Parse starting date information
+    date_data = []
+    date_pattern = r'((?:June|July|August)\s+\d{1,2})\s+gives\s+you\s+(\d+)\s*points?'
+    date_matches = re.findall(date_pattern, goal_text)
+    
+    for match in date_matches:
+        date_str = match[0]
+        points = int(match[1])
+        # Parse the date string to datetime for proper sorting
         try:
-            assessment_data = {
-                "participant_id": participant_id,
-                "timestamp": datetime.now().isoformat(),
-                "responses": responses,
-                "scores": scores,
-                "assessment_type": "big_five_extroversion_agreeableness"
-            }
-            
-            # Create a temporary episode log to store assessment data
-            assessment_log = EpisodeLog(
-                environment="personality_assessment",
-                agents=[participant_id],
-                tag=f"personality_assessment_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{participant_id[:8]}",
-                models=["personality_assessment"],
-                messages=[],  # No conversation messages for assessment
-                reasoning=json.dumps(assessment_data, indent=2),
-                rewards=[0.0]
+            date_obj = datetime.strptime(f"{date_str} 2024", "%B %d %Y")
+        except ValueError:
+            # Fallback if parsing fails
+            date_obj = datetime.now()
+        
+        date_data.append({
+            'Starting Date': date_str,
+            'Points': points,
+            'date_obj': date_obj
+        })
+    
+    # Sort date data by actual date (reverse chronological order - latest to earliest)
+    date_data.sort(key=lambda x: x['date_obj'], reverse=True)
+    
+    if date_data:
+        st.markdown("##### 📅 **Start Date Points**")
+        # Create horizontal date bar chart using Altair
+        date_df = pd.DataFrame(date_data)
+        # Create a proper date sorting order
+        date_order = [item['Starting Date'] for item in date_data]
+        date_chart = alt.Chart(date_df).mark_bar().encode(
+            x=alt.X('Points:Q', title='Points'),
+            y=alt.Y('Starting Date:N', title='Starting Date', sort=date_order),
+            color=alt.Color('Points:Q', scale=alt.Scale(scheme='greens'), legend=None),
+            tooltip=['Starting Date', 'Points']
+        ).properties(
+            height=180,
+            width=400
+        )
+        st.altair_chart(date_chart, use_container_width=True)
+
+
+def generate_negotiation_tables(goal_text: str, scenario_codename: str):
+    """Generate bar charts for job negotiation scenarios showing salary and start date point values (legacy function)"""
+    import re
+    import pandas as pd
+    
+    # Parse salary information
+    salary_data = []
+    salary_pattern = r'\$(\d{2,3}),000\s+gives\s+you\s+(\d+)\s*points?'
+    salary_matches = re.findall(salary_pattern, goal_text)
+    
+    for match in salary_matches:
+        salary_amount = int(match[0])
+        points = int(match[1])
+        salary_data.append({
+            'Salary': f'${salary_amount},000',
+            'Amount': salary_amount,
+            'Points': points
+        })
+    
+    # Sort salary data by salary amount (ascending - lowest to highest)
+    salary_data.sort(key=lambda x: x['Amount'])
+    
+    # Parse starting date information
+    date_data = []
+    date_pattern = r'((?:June|July|August)\s+\d{1,2})\s+gives\s+you\s+(\d+)\s*points?'
+    date_matches = re.findall(date_pattern, goal_text)
+    
+    from datetime import datetime
+    for match in date_matches:
+        date_str = match[0]
+        points = int(match[1])
+        # Parse the date string to datetime for proper sorting
+        try:
+            date_obj = datetime.strptime(f"{date_str} 2024", "%B %d %Y")
+        except ValueError:
+            # Fallback if parsing fails
+            date_obj = datetime.now()
+        
+        date_data.append({
+            'Starting Date': date_str,
+            'Points': points,
+            'date_obj': date_obj
+        })
+    
+    # Sort date data by actual date (reverse chronological order - latest to earliest)
+    date_data.sort(key=lambda x: x['date_obj'], reverse=True)
+    
+    if salary_data and date_data:
+        st.markdown("#### **Point Values**")
+        
+        # Create two columns for side-by-side bar charts
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("##### 💰 **Salary Points**")
+            # Create horizontal salary bar chart using Altair
+            import altair as alt
+            salary_df = pd.DataFrame(salary_data)
+            salary_chart = alt.Chart(salary_df).mark_bar().encode(
+                x=alt.X('Points:Q', title='Points'),
+                y=alt.Y('Salary:N', title='Salary', sort=alt.EncodingSortField(field='Amount', order='ascending')),
+                color=alt.Color('Points:Q', scale=alt.Scale(scheme='blues'), legend=None),
+                tooltip=['Salary', 'Points']
+            ).properties(
+                height=200,
+                width=300
             )
-            
-            assessment_log.save()
-            return assessment_log.pk
-            
-        except Exception as e:
-            st.error(f"Error saving personality assessment: {str(e)}")
-            return ""
-    
-    @staticmethod
-    def get_assessment(participant_id: str) -> Dict[str, Any]:
-        """Retrieve existing personality assessment for a participant"""
-        try:
-            # Find assessment episodes for this participant
-            all_episodes = EpisodeLog.find().all()
-            for episode in all_episodes:
-                if (episode.environment == "personality_assessment" and 
-                    participant_id in episode.agents):
-                    try:
-                        assessment_data = json.loads(episode.reasoning)
-                        if assessment_data.get("participant_id") == participant_id:
-                            return assessment_data
-                    except json.JSONDecodeError:
-                        continue
-            return {}
-        except Exception as e:
-            print(f"Error retrieving personality assessment: {e}")
-            return {}
-
-
-def calculate_personality_scores(responses: Dict[int, int]) -> Dict[str, int]:
-    """Calculate Big Five personality scores using the provided formulas."""
-    # Extroversion calculation: E = 20 + (1) - (6) + (11) - (16) + (21) - (26) + (31) - (36) + (41) - (46)
-    extroversion = (20 + 
-                   responses.get(1, 3) - responses.get(6, 3) + 
-                   responses.get(11, 3) - responses.get(16, 3) + 
-                   responses.get(21, 3) - responses.get(26, 3) + 
-                   responses.get(31, 3) - responses.get(36, 3) + 
-                   responses.get(41, 3) - responses.get(46, 3))
-    
-    # Agreeableness calculation: A = 14 - (2) + (7) - (12) + (17) - (22) + (27) - (32) + (37) + (42) + (47)
-    agreeableness = (14 - responses.get(2, 3) + responses.get(7, 3) - 
-                    responses.get(12, 3) + responses.get(17, 3) - 
-                    responses.get(22, 3) + responses.get(27, 3) - 
-                    responses.get(32, 3) + responses.get(37, 3) + 
-                    responses.get(42, 3) + responses.get(47, 3))
-    
-    return {
-        "extroversion": extroversion,
-        "agreeableness": agreeableness
-    }
-
-
-def classify_personality(extroversion: int, agreeableness: int) -> Dict[str, str]:
-    """Classify personality into quartiles for balanced assignment."""
-    # Define quartile cutoffs (these may need adjustment based on population data)
-    ext_cutoff = 30  # Median split for extroversion
-    agree_cutoff = 42  # Median split for agreeableness
-    
-    ext_level = "high" if extroversion >= ext_cutoff else "low"
-    agree_level = "high" if agreeableness >= agree_cutoff else "low"
-    
-    personality_type = f"{ext_level}_ext_{agree_level}_agree"
-    
-    return {
-        "extroversion_level": ext_level,
-        "agreeableness_level": agree_level,
-        "personality_type": personality_type,
-        "extroversion_score": extroversion,
-        "agreeableness_score": agreeableness
-    }
+            st.altair_chart(salary_chart, use_container_width=True)
+        
+        with col2:
+            st.markdown("##### 📅 **Start Date Points**")
+            # Create horizontal date bar chart using Altair
+            date_df = pd.DataFrame(date_data)
+            # Create a proper date sorting order
+            date_order = [item['Starting Date'] for item in date_data]
+            date_chart = alt.Chart(date_df).mark_bar().encode(
+                x=alt.X('Points:Q', title='Points'),
+                y=alt.Y('Starting Date:N', title='Starting Date', sort=date_order),
+                color=alt.Color('Points:Q', scale=alt.Scale(scheme='greens'), legend=None),
+                tooltip=['Starting Date', 'Points']
+            ).properties(
+                height=200,
+                width=300
+            )
+            st.altair_chart(date_chart, use_container_width=True)
 
 
 def load_local_scenarios() -> dict[str, dict[Any, Any]]:
@@ -313,7 +390,7 @@ def create_agent_profile_from_json(agent_data: dict) -> SimpleAgentProfile:
     return agent_profile
 
 
-async def get_ai_response_async(human_message: str, agent_profile_data: dict, transparency: str, turn_number: int, conversation_context: str = "", model_name: str = "gpt-4o") -> str:
+async def get_ai_response_async(human_message: str, agent_profile_data: dict, transparency: str, turn_number: int, conversation_context: str = "", scenario_context: str = "", model_name: str = "gpt-4o") -> str:
     """Get AI response using the transparency system"""
     try:
         # Convert JSON data to SimpleAgentProfile (no database needed)
@@ -330,13 +407,20 @@ async def get_ai_response_async(human_message: str, agent_profile_data: dict, tr
         if hasattr(agent, 'transparency'):
             print(f"DEBUG: Agent transparency setting: {agent.transparency}")
         
-        # Create observation with conversation context
+        # Create observation with scenario context and conversation history
         available_actions = ["speak", "non-verbal communication", "leave"]
         
-        # Build the context string that includes conversation history and current message
-        full_context = f"{conversation_context}\nHuman: {human_message}" if conversation_context else f"Human: {human_message}"
+        # Build the full context string with scenario context, conversation history, and current message
+        context_parts = []
+        if scenario_context:
+            context_parts.append(scenario_context.strip())
+        if conversation_context:
+            context_parts.append(f"Previous conversation:\n{conversation_context}")
+        context_parts.append(f"Human: {human_message}")
         
-        # Create observation from human message with context
+        full_context = "\n\n".join(context_parts)
+        
+        # Create observation from human message with enhanced context
         observation = Observation(
             last_turn=full_context,
             turn_number=turn_number,
@@ -362,7 +446,21 @@ async def get_ai_response_async(human_message: str, agent_profile_data: dict, tr
         print(f"DEBUG ASYNC: Action type: {action.action_type if action else 'None'}")
         print(f"DEBUG ASYNC: Raw argument: {action.argument if action else 'None'}")
         print(f"DEBUG ASYNC: Processed result: {result[:100]}...")
-        return result
+        
+        # Return both result and debug info (can't store session state in thread)
+        debug_info = {
+            'turn_number': turn_number,
+            'full_context': full_context,
+            'agent_name': agent_profile_data.get('first_name', 'AI'),
+            'transparency': transparency,
+            'scenario_context': scenario_context,
+            'conversation_context': conversation_context,
+            'human_message': human_message,
+            'ai_response': result
+        }
+        
+        print(f"DEBUG ASYNC: Created debug info for turn {turn_number}")
+        return result, debug_info
         
     except Exception as e:
         st.error(f"Error getting AI response: {str(e)}")
@@ -372,14 +470,25 @@ async def get_ai_response_async(human_message: str, agent_profile_data: dict, tr
         print(f"AI Response Error: {str(e)}")
         print(f"Full traceback: {traceback.format_exc()}")
         
-        # Return a test response with thinking tags for debugging
+        # Return a test response with thinking tags for debugging and empty debug info
+        error_debug_info = {
+            'turn_number': turn_number,
+            'full_context': f"ERROR: {str(e)}",
+            'agent_name': agent_profile_data.get('first_name', 'AI') if 'agent_profile_data' in locals() else 'AI',
+            'transparency': transparency,
+            'scenario_context': scenario_context if 'scenario_context' in locals() else "",
+            'conversation_context': conversation_context if 'conversation_context' in locals() else "",
+            'human_message': human_message,
+            'ai_response': f"ERROR: {str(e)}"
+        }
+        
         if transparency == "high":
-            return "<THINK>I'm having technical difficulties with the AI generation system. The validation error suggests the agent is returning malformed data instead of a proper string response.</THINK>I apologize, but I'm experiencing some technical difficulties right now. Please try again."
+            return "<THINK>I'm having technical difficulties with the AI generation system. The validation error suggests the agent is returning malformed data instead of a proper string response.</THINK>I apologize, but I'm experiencing some technical difficulties right now. Please try again.", error_debug_info
         else:
-            return "I'm sorry, I'm having trouble responding right now."
+            return "I'm sorry, I'm having trouble responding right now.", error_debug_info
 
 
-def get_ai_response(human_message: str, agent_profile_data: dict, transparency: str, turn_number: int, conversation_context: str = "", model_name: str = "gpt-4o") -> str:
+def get_ai_response(human_message: str, agent_profile_data: dict, transparency: str, turn_number: int, conversation_context: str = "", scenario_context: str = "", model_name: str = "gpt-4o") -> str:
     """Sync wrapper for async AI response function"""
     try:
         # Simplified approach - just use asyncio.run in a thread
@@ -387,11 +496,27 @@ def get_ai_response(human_message: str, agent_profile_data: dict, transparency: 
         with concurrent.futures.ThreadPoolExecutor() as executor:
             future = executor.submit(
                 asyncio.run, 
-                get_ai_response_async(human_message, agent_profile_data, transparency, turn_number, conversation_context, model_name)
+                get_ai_response_async(human_message, agent_profile_data, transparency, turn_number, conversation_context, scenario_context, model_name)
             )
-            result = future.result(timeout=60)  # 60 second timeout
-            print(f"DEBUG SYNC: Got result from async: {result[:100]}...")
-            return result
+            result_tuple = future.result(timeout=60)  # 60 second timeout
+            
+            # Handle tuple return (result, debug_info)
+            if isinstance(result_tuple, tuple) and len(result_tuple) == 2:
+                result, debug_info = result_tuple
+                
+                # Store debug information in session state (main thread)
+                if 'debug_prompt_info' not in st.session_state:
+                    st.session_state.debug_prompt_info = []
+                
+                st.session_state.debug_prompt_info.append(debug_info)
+                debug_count = len(st.session_state.debug_prompt_info)
+                print(f"DEBUG SYNC: Stored debug info for turn {turn_number}. Total count: {debug_count}")
+                
+                return result
+            else:
+                # Fallback for unexpected return format
+                print(f"DEBUG SYNC: Unexpected return format: {type(result_tuple)}")
+                return str(result_tuple)
             
     except Exception as e:
         st.error(f"Error in get_ai_response: {str(e)}")
@@ -437,7 +562,7 @@ def save_conversation_to_redis(conversation_history: list, interventions: dict, 
             "agent_id": agent_choice,
             "agent_attributes": {
                 "name": f"{agent_profile_data.get('first_name', '')} {agent_profile_data.get('last_name', '')}".strip(),
-                "occupation": agent_profile_data.get('occupation', ''),
+                "occupation": get_scenario_occupation(scenario_choice),
                 "age": agent_profile_data.get('age', ''),
                 "decision_making_style": agent_profile_data.get('decision_making_style', ''),
                 "big_five": agent_profile_data.get('big_five', ''),
@@ -578,10 +703,10 @@ def export_conversation_to_files(conversation_history: list, interventions: dict
         st.error(f"❌ Failed to export files: {str(e)}")
 
 
-def find_matching_agent(interventions: dict, agent_dict: dict, personality_classification: dict = None) -> str:
-    """Find agent profile that matches intervention dimensions, with optional personality-based balancing"""
+def find_matching_agent(interventions: dict, agent_dict: dict) -> str:
+    """Find agent profile that matches intervention dimensions (simplified without personality balancing)"""
     
-    # Step 1: Find all agents that match the intervention pattern (same as before)
+    # Find all agents that match the intervention pattern
     target_transparency = interventions.get("transparency", "low").title()  # "High" or "Low"
     target_warmth = interventions.get("warmth", "low").title()
     target_expertise = interventions.get("expertise", "high").title()  
@@ -591,7 +716,7 @@ def find_matching_agent(interventions: dict, agent_dict: dict, personality_class
     # Build target pattern to match in personality_and_values
     target_pattern = f"{target_transparency} Transparency, {target_warmth} Warmth, {target_adaptability} Adaptability, {target_expertise} Expertise, {target_theory_of_mind} Theory of Mind"
     
-    # Find all matching agents (not just the first one)
+    # Find all matching agents
     matching_agents = []
     for agent_key, agent_data in agent_dict.items():
         personality = agent_data.get("personality_and_values", "")
@@ -605,31 +730,10 @@ def find_matching_agent(interventions: dict, agent_dict: dict, personality_class
     
     print(f"DEBUG: Found {len(matching_agents)} matching agents for pattern")
     
-    # Step 2: If personality classification is available, use balanced assignment among matching agents
-    if (personality_classification and BalancedAssignmentManager and 
-        personality_classification.get("personality_type") and len(matching_agents) > 1):
-        
-        try:
-            print(f"DEBUG: Using balanced assignment among {len(matching_agents)} matching agents")
-            intervention_key = BalancedAssignmentManager.get_intervention_combination_key(interventions)
-            personality_key = personality_classification.get("personality_type")
-            
-            # Get the least assigned agent among the matching ones
-            selected_agent = BalancedAssignmentManager.get_least_assigned_agent(
-                matching_agents, personality_key, intervention_key
-            )
-            
-            print(f"DEBUG: Balanced assignment selected: {selected_agent}")
-            return selected_agent
-            
-        except Exception as e:
-            print(f"DEBUG: Error in balanced assignment, using first matching agent: {e}")
-    
-    # Step 3: Default behavior - return first matching agent
+    # Simple selection: return first matching agent
     selected_agent = matching_agents[0]
-    print(f"DEBUG: Using first matching agent: {selected_agent}")
+    print(f"DEBUG: Selected agent: {selected_agent}")
     print(f"DEBUG: Target pattern: {target_pattern}")
-    print(f"DEBUG: Agent personality: {agent_dict[selected_agent].get('personality_and_values', '')[:200]}...")
     
     return selected_agent
 
@@ -653,6 +757,8 @@ def initialize_simple_session_state() -> None:
         st.session_state.agent_instance = None  # Will hold the agent instance
         st.session_state.survey_completed = False
         st.session_state.survey_responses = {}
+        st.session_state.generating_response = False  # Track AI response generation state
+        st.session_state.debug_prompt_info = []  # Initialize debug prompt storage
         
         # Load data from local files
         st.session_state.scenarios = load_local_scenarios()
@@ -697,6 +803,10 @@ def initialize_simple_session_state() -> None:
         use_personality_assessment = st.query_params.get("survey", "false").lower() == "true"
         personality_classification = None
         
+        # Initialize personality_classification in session state
+        if "personality_classification" not in st.session_state:
+            st.session_state.personality_classification = None
+        
         # Generate or get participant ID for personality tracking
         if "participant_id" not in st.session_state:
             st.session_state.participant_id = st.query_params.get("participant_id") or str(uuid4())
@@ -705,47 +815,42 @@ def initialize_simple_session_state() -> None:
         if PersonalityAssessmentTracker:
             try:
                 assessment_data = PersonalityAssessmentTracker.get_assessment(st.session_state.participant_id)
-                if assessment_data and "scores" in assessment_data:
-                    scores = assessment_data["scores"]
-                    personality_classification = classify_personality(
-                        scores["extroversion"], scores["agreeableness"]
-                    )
-                    st.session_state.personality_data = {
-                        "participant_id": st.session_state.participant_id,
-                        "scores": scores,
-                        "classification": personality_classification
-                    }
-                    print(f"DEBUG: Loaded existing personality data for participant {st.session_state.participant_id}")
-                    print(f"DEBUG: Personality classification: {personality_classification}")
+                if assessment_data:
+                    # Handle both old and new data formats
+                    scores = assessment_data.get("scores") or assessment_data.get("personality_scores")
+                    if scores:
+                        personality_classification = classify_personality(
+                            scores["extroversion"], scores["agreeableness"]
+                        )
+                        st.session_state.personality_data = {
+                            "participant_id": st.session_state.participant_id,
+                            "scores": scores,
+                            "classification": personality_classification
+                        }
+                        
+                        # Load personality responses if available
+                        personality_responses = assessment_data.get("responses") or assessment_data.get("personality_responses")
+                        if personality_responses:
+                            st.session_state.assessment_responses = personality_responses
+                            
+                        # Load pre-study responses if available
+                        prestudy_responses = assessment_data.get("prestudy_responses")
+                        if prestudy_responses:
+                            st.session_state.prestudy_responses = prestudy_responses
+                        
+                        print(f"DEBUG: Loaded existing assessment data for participant {st.session_state.participant_id}")
+                        print(f"DEBUG: Personality classification: {personality_classification}")
             except Exception as e:
                 print(f"DEBUG: Error loading personality assessment: {e}")
         
-        # Auto-select agent based on intervention dimensions (with personality balancing if available)
+        # Auto-select agent based on intervention dimensions only
         st.session_state.agent_choice_1 = find_matching_agent(
             st.session_state.interventions, 
-            st.session_state.agent_dict,
-            personality_classification
+            st.session_state.agent_dict
         )
         
-        # Record the assignment if we have personality data and assignment tracker
-        if personality_classification and BalancedAssignmentManager:
-            try:
-                intervention_key = BalancedAssignmentManager.get_intervention_combination_key(
-                    st.session_state.interventions
-                )
-                personality_key = personality_classification.get("personality_type")
-                
-                BalancedAssignmentManager.record_assignment(
-                    st.session_state.agent_choice_1,
-                    personality_key,
-                    intervention_key,
-                    st.session_state.participant_id
-                )
-                print(f"DEBUG: Recorded balanced assignment for {st.session_state.participant_id}")
-            except Exception as e:
-                print(f"DEBUG: Error recording assignment: {e}")
-        else:
-            print(f"DEBUG: Assignment not recorded - personality_classification: {personality_classification is not None}, BalancedAssignmentManager: {BalancedAssignmentManager is not None}")
+        # Store personality classification for later assignment recording (after survey completion)
+        st.session_state.personality_classification = personality_classification or None
         
         # Store assessment requirement for flow control
         st.session_state.requires_personality_assessment = use_personality_assessment
@@ -767,14 +872,18 @@ def display_user_role_simple() -> None:
             st.sidebar.write("**Scenario Data Structure:**")
             st.sidebar.json(current_scenario)
         
-        # Display your goal (Agent 2's goal - what they should accomplish)
+        # Display your goal (Human user's goal - what they should accomplish)
         st.markdown("### 🎯 **Your Goal**")
         
         if 'agent_goals' in current_scenario and len(current_scenario['agent_goals']) >= 2:
-            agent2_goal = current_scenario['agent_goals'][1]
+            # Determine correct goal index based on scenario type
+            if current_scenario.get('codename', '').startswith('[ai-liedar]'):
+                user_goal = current_scenario['agent_goals'][0]  # Human goal for ai-liedar scenarios
+            else:
+                user_goal = current_scenario['agent_goals'][1]  # Human goal for hiring scenarios
             
             # Remove backstory and strategy hints, keep only the actual goal/task
-            clean_goal = re.sub(r'<extra_info>.*?</extra_info>', '', agent2_goal, flags=re.DOTALL)
+            clean_goal = re.sub(r'<extra_info>.*?</extra_info>', '', user_goal, flags=re.DOTALL)
             clean_goal = re.sub(r'<strategy_hint>.*?</strategy_hint>', '', clean_goal, flags=re.DOTALL)
             clean_goal = clean_goal.strip()
             
@@ -790,98 +899,165 @@ def display_user_role_simple() -> None:
             clean_goal = re.sub(r'([a-z])([A-Z])', r'\1 \2', clean_goal)  # Add space between cases
             
             if clean_goal:
-                # Enhanced formatting with highlighting for important sections
-                formatted_goal = clean_goal
+                # Check if this is a job negotiation scenario
+                scenario_codename = current_scenario.get('codename', '')
+                is_job_negotiation = 'job_interview' in scenario_codename
                 
-                # Add proper line breaks and section formatting
-                # Break before major sections like "Salary:" and "Starting Date:"
-                formatted_goal = re.sub(
-                    r'\b(Salary|Starting Date|Start Date):', 
-                    r'<br><br><strong style="color: #495057; font-size: 18px;">\1:</strong> ', 
-                    formatted_goal, 
-                    flags=re.IGNORECASE
-                )
-                
+                # Apply common formatting for both job and non-job scenarios FIRST
                 # Add line breaks before sentences that start with key phrases
-                formatted_goal = re.sub(
+                clean_goal = re.sub(
                     r'\s+(Your salary|Your starting date|These are the only)\b', 
                     r'<br>\1', 
-                    formatted_goal, 
+                    clean_goal, 
                     flags=re.IGNORECASE
                 )
                 
                 # Add line breaks before "Do not" only when it starts a new sentence (after period)
-                formatted_goal = re.sub(
+                clean_goal = re.sub(
                     r'\.\s+(Do not)', 
                     r'. <br>\1', 
-                    formatted_goal, 
+                    clean_goal, 
                     flags=re.IGNORECASE
                 )
                 
                 # Add line breaks before "There are X different" patterns
-                formatted_goal = re.sub(
+                clean_goal = re.sub(
                     r'\s+(There are \d+ different)', 
                     r'<br>\1', 
-                    formatted_goal, 
+                    clean_goal, 
                     flags=re.IGNORECASE
                 )
                 
                 # Highlight [IMPORTANT] tags with strong visual emphasis
-                formatted_goal = re.sub(
+                clean_goal = re.sub(
                     r'\[IMPORTANT\](.*?)(?=\[|$)', 
                     r'<div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 8px 12px; margin: 8px 0; border-radius: 4px;"><strong>🚨 IMPORTANT:</strong> \1</div>', 
-                    formatted_goal, 
+                    clean_goal, 
                     flags=re.DOTALL
                 )
                 
                 # Highlight "Your goal is to" sentences for specific scenarios
-                formatted_goal = re.sub(
+                clean_goal = re.sub(
                     r'(Your goal is to[^.]*\.)', 
                     r'<div style="background-color: #e7f3ff; border-left: 4px solid #0d6efd; padding: 8px 12px; margin: 8px 0; border-radius: 4px;"><strong>🎯 \1</strong></div>', 
-                    formatted_goal, 
-                    flags=re.IGNORECASE
-                )
-                
-                # Highlight numerical values (salary, points, etc.) with subtle grey background
-                formatted_goal = re.sub(
-                    r'(\$\d{1,3}(?:,\d{3})*|\d{1,3}(?:,\d{3})*\s*points?)', 
-                    r'<strong style="background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px;">\1</strong>', 
-                    formatted_goal
-                )
-                
-                # Highlight dates (June 1, July 15, etc.)
-                formatted_goal = re.sub(
-                    r'\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}\b', 
-                    r'<strong style="background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px;">\g<0></strong>', 
-                    formatted_goal, 
+                    clean_goal, 
                     flags=re.IGNORECASE
                 )
                 
                 # Highlight key action words
                 key_words = ['negotiate', 'convince', 'persuade', 'achieve', 'obtain', 'secure', 'maximize', 'minimize']
                 for word in key_words:
-                    formatted_goal = re.sub(
+                    clean_goal = re.sub(
                         f'\\b({word})\\b', 
                         r'<strong style="color: #0d6efd;">\1</strong>', 
-                        formatted_goal, 
+                        clean_goal, 
                         flags=re.IGNORECASE
                     )
                 
-                # Use enhanced styling with better visual hierarchy
-                st.markdown(f"""
-                <div style="
-                    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                    border: 2px solid #dee2e6;
-                    border-radius: 8px;
-                    padding: 20px;
-                    margin: 16px 0;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                ">
-                    <div style="font-size: 16px; line-height: 1.6; color: #212529;">
-                        {formatted_goal}
+                if is_job_negotiation:
+                    # Process non-table content for instructions and important info
+                    formatted_goal = clean_goal
+                    
+                    # Remove the detailed point breakdown sentences (we'll show charts after all text)
+                    # Remove the sentence after "There are 5 different amounts you can agree on, each associated with a different number of points for you."
+                    formatted_goal = re.sub(
+                        r'There are 5 different amounts you can agree on, each associated with a different number of points for you\.\s*([^.]*gives you \d+ points[^.]*\.)',
+                        r'There are 5 different amounts you can agree on, each associated with a different number of points for you. See the bar chart below for details.',
+                        formatted_goal,
+                        flags=re.DOTALL
+                    )
+                    
+                    # Remove the sentence after "There are 5 different dates you can agree on, each associated with a different number of points for you."
+                    formatted_goal = re.sub(
+                        r'There are 5 different dates you can agree on, each associated with a different number of points for you\.\s*([^.]*gives you \d+ points[^.]*\.)',
+                        r'There are 5 different dates you can agree on, each associated with a different number of points for you. See the bar chart below for details.',
+                        formatted_goal,
+                        flags=re.DOTALL
+                    )
+                    
+                    # Add proper line breaks and section formatting for job scenarios
+                    # Break before major sections like "Salary:" and "Starting Date:" with extra spacing
+                    formatted_goal = re.sub(
+                        r'\b(Salary|Starting Date|Start Date):', 
+                        r'<br><strong style="color: #495057; font-size: 18px;">\1:</strong>', 
+                        formatted_goal, 
+                        flags=re.IGNORECASE
+                    )
+                    
+                    # Clean up extra whitespace and line breaks
+                    formatted_goal = re.sub(r'\n\s*\n\s*\n', '\n\n', formatted_goal)
+                    formatted_goal = formatted_goal.strip()
+                    
+                    # Display all text in one grey box
+                    st.markdown(f"""
+                    <div style="
+                        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                        border: 2px solid #dee2e6;
+                        border-radius: 8px;
+                        padding: 20px;
+                        margin: 16px 0;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    ">
+                        <div style="font-size: 16px; line-height: 1.6; color: #212529;">
+                            {formatted_goal}
+                        </div>
                     </div>
-                </div>
-                """, unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
+                    
+                    # Display both charts side-by-side below the text
+                    st.markdown("#### **Point Values**")
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        generate_inline_salary_chart(clean_goal, current_scenario.get('codename', ''))
+                    
+                    with col2:
+                        generate_inline_date_chart(clean_goal, current_scenario.get('codename', ''))
+                    
+                else:
+                    # Enhanced formatting with highlighting for important sections (non-job scenarios)
+                    formatted_goal = clean_goal
+                    
+                    # Add proper line breaks and section formatting
+                    # Break before major sections like "Salary:" and "Starting Date:"
+                    formatted_goal = re.sub(
+                        r'\b(Salary|Starting Date|Start Date):', 
+                        r'<strong style="color: #495057; font-size: 18px;">\1:</strong> ', 
+                        formatted_goal, 
+                        flags=re.IGNORECASE
+                    )
+                    
+                    # For non-job scenarios, highlight numerical values and dates
+                    # Highlight numerical values (salary, points, etc.) with subtle grey background
+                    formatted_goal = re.sub(
+                        r'(\$\d{1,3}(?:,\d{3})*|\d{1,3}(?:,\d{3})*\s*points?)', 
+                        r'<strong style="background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px;">\1</strong>', 
+                        formatted_goal
+                    )
+                    
+                    # Highlight dates (June 1, July 15, etc.)
+                    formatted_goal = re.sub(
+                        r'\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}\b', 
+                        r'<strong style="background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px;">\g<0></strong>', 
+                        formatted_goal, 
+                        flags=re.IGNORECASE
+                    )
+                    
+                    # Display the formatted text for non-job scenarios
+                    st.markdown(f"""
+                    <div style="
+                        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                        border: 2px solid #dee2e6;
+                        border-radius: 8px;
+                        padding: 20px;
+                        margin: 8px 0;
+                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    ">
+                        <div style="font-size: 16px; line-height: 1.6; color: #212529;">
+                            {formatted_goal}
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
             else:
                 st.warning("No task goal found - this scenario may not be suitable for user studies")
         else:
@@ -923,7 +1099,7 @@ def display_conversation_history():
 
 
 def simulate_ai_response(human_message: str) -> str:
-    """Get AI response using the actual agent with transparency settings"""
+    """Get AI response using the actual agent with transparency settings and scenario context"""
     try:
         # Get the selected agent data
         agent_profile_data = st.session_state.agent_dict[st.session_state.agent_choice_1]
@@ -934,9 +1110,37 @@ def simulate_ai_response(human_message: str) -> str:
         # Get model name (you can configure this)
         model_name = "gpt-4o"  # Default model, can be made configurable
         
-        # if st.session_state.interventions.get("transparency") == "high":
-        #     return "<THINK>TEST: This is a manual thinking process to verify the display works.</THINK>Hello! This is a test response."
-  
+        # Extract scenario context and AI agent's goal
+        scenario_context = ""
+        ai_agent_goal = ""
+        
+        if (st.session_state.scenario_choice in st.session_state.scenarios):
+            current_scenario = st.session_state.scenarios[st.session_state.scenario_choice]
+            scenario_description = current_scenario.get('scenario', '')
+            agent_goals = current_scenario.get('agent_goals', [])
+            
+            if len(agent_goals) >= 2:
+                # Determine correct goal index based on scenario type  
+                if current_scenario.get('codename', '').startswith('[ai-liedar]'):
+                    ai_agent_goal = agent_goals[1]  # AI goal for ai-liedar scenarios
+                else:
+                    ai_agent_goal = agent_goals[0]  # AI goal for hiring scenarios
+                
+                # Clean the AI agent's goal (remove strategy hints but keep extra_info)
+                clean_ai_goal = re.sub(r'<strategy_hint>.*?</strategy_hint>', '', ai_agent_goal, flags=re.DOTALL)
+                clean_ai_goal = clean_ai_goal.strip()
+                
+                # Get AI agent's occupation for this scenario
+                ai_occupation = get_scenario_occupation(st.session_state.scenario_choice)
+                
+                # Build scenario context similar to ScriptBackground format
+                scenario_context = f"""Here is the context of this interaction:
+Scenario: {scenario_description}
+Your role: {ai_occupation}
+Your goal: {clean_ai_goal}
+
+"""
+        
         # Build conversation context from history
         conversation_context = ""
         for msg in st.session_state.conversation_history:
@@ -947,273 +1151,98 @@ def simulate_ai_response(human_message: str) -> str:
         # Get current turn number
         current_turn = st.session_state.turn_number + 1
         
-        # Get AI response using the actual agent
+        # Get AI response with enhanced context
         response = get_ai_response(
             human_message=human_message,
             agent_profile_data=agent_profile_data,
             transparency=transparency_level,
             turn_number=current_turn,
             conversation_context=conversation_context.strip(),
+            scenario_context=scenario_context,
             model_name=model_name
         )
         
+        # Reset loading state before returning
+        st.session_state.generating_response = False
         return response
         
     except Exception as e:
+        # Reset loading state on error
+        st.session_state.generating_response = False
         st.error(f"Error getting AI response: {str(e)}")
         import traceback
         st.error(f"Full traceback: {traceback.format_exc()}")
         return "I apologize, but I'm having trouble responding right now. Please try again."
 
 
-def display_post_study_survey() -> dict:
-    """Display post-study survey and return responses"""
-    st.markdown("---")
-    st.markdown("## 📋 **Post-Study Survey**")
-    st.markdown("Please answer the following questions about your interaction with the AI agent.")
+# display_post_study_survey function imported from ui.surveys.questions
+
+
+def display_debug_prompts() -> None:
+    """Display debug information about prompts sent to AI agent"""
+    # Debug logging
+    debug_exists = 'debug_prompt_info' in st.session_state
+    debug_count = len(st.session_state.debug_prompt_info) if debug_exists else 0
+    print(f"DEBUG DISPLAY: debug_prompt_info exists: {debug_exists}, count: {debug_count}")
     
-    survey_responses = {}
+    if not debug_exists or not st.session_state.debug_prompt_info:
+        st.info("No debug information available yet. Start a conversation to see prompt details.")
+        st.write(f"**Debug status**: Session state has debug_prompt_info: {debug_exists}, Count: {debug_count}")
+        return
     
-    # Initialize slider interaction tracking in session state
-    if "slider_interactions" not in st.session_state:
-        st.session_state.slider_interactions = {}
+    st.markdown("### 🔍 **Debug: AI Agent Prompts**")
     
-    # Add instruction for users about slider interaction
-    st.info("📌 **Note**: Please click or drag each slider to indicate your response, even if you want to keep the default middle position.")
-    
-    # Manipulation Checks Section
-    st.markdown("### **Manipulation Checks**")
-    st.markdown("*Think about the AI agent you just interacted with. Please rate how well each statement describes the AI:*")
-    st.markdown("**1 = Strongly disagree, 2 = Disagree, 3 = Neutral, 4 = Agree, 5 = Strongly agree**")
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown("**The AI clearly explained its reasoning and decision-making process.**")
-    with col2:
-        survey_responses['transparency'] = st.selectbox(
-            "", 
-            options=[1, 2, 3, 4, 5], 
-            format_func=lambda x: {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
-            key="transparency_check",
-            label_visibility="collapsed"
-        )
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown("**The AI communicated in a friendly and caring manner.**")
-    with col2:
-        survey_responses['warmth'] = st.selectbox(
-            "", 
-            options=[1, 2, 3, 4, 5], 
-            format_func=lambda x: {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
-            key="warmth_check",
-            label_visibility="collapsed"
-        )
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown("**The AI seemed to understand my perspective and intentions.**")
-    with col2:
-        survey_responses['theory_of_mind'] = st.selectbox(
-            "", 
-            options=[1, 2, 3, 4, 5], 
-            format_func=lambda x: {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
-            key="tom_check",
-            label_visibility="collapsed"
-        )
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown("**The AI was flexible in its approach to our conversations.**")
-    with col2:
-        survey_responses['adaptability'] = st.selectbox(
-            "", 
-            options=[1, 2, 3, 4, 5], 
-            format_func=lambda x: {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
-            key="adaptability_check",
-            label_visibility="collapsed"
-        )
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        st.markdown("**The AI seemed well-informed about the topics we discussed.**")
-    with col2:
-        survey_responses['expertise'] = st.selectbox(
-            "", 
-            options=[1, 2, 3, 4, 5], 
-            format_func=lambda x: {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
-            key="expertise_check",
-            label_visibility="collapsed"
-        )
-    
-    st.markdown("---")
-    
-    # Interaction Outcome Section
-    st.markdown("### **Interaction Outcome**")
-    
-    st.markdown("**How successful were you in achieving your goals in this scenario?**")
-    def mark_goals_interaction():
-        st.session_state.slider_interactions["goals"] = True
-    
-    survey_responses['goals'] = st.slider(
-        "", 
-        min_value=1, max_value=7, value=4,
-        format="%d",
-        help="1 = Completely unsuccessful, 7 = Completely successful",
-        key="goals_slider",
-        label_visibility="collapsed",
-        on_change=mark_goals_interaction
-    )
-    
-    # Add a confirmation button for midpoint selection
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        if st.session_state.slider_interactions.get("goals", False):
-            st.caption("✅ 1 = Completely unsuccessful → 7 = Completely successful")
-        else:
-            st.caption("⏸️ 1 = Completely unsuccessful → 7 = Completely successful")
-    with col2:
-        if not st.session_state.slider_interactions.get("goals", False):
-            if st.button("Confirm Selection", key="confirm_goals", help="Click to confirm your slider choice"):
-                st.session_state.slider_interactions["goals"] = True
-                st.rerun()
-    
-    st.markdown("**How satisfied are you with the outcome of this negotiation?**")
-    def mark_satisfaction_interaction():
-        st.session_state.slider_interactions["satisfaction"] = True
-    
-    survey_responses['satisfaction'] = st.slider(
-        "", 
-        min_value=1, max_value=7, value=4,
-        format="%d",
-        help="1 = Very dissatisfied, 7 = Very satisfied",
-        key="satisfaction_slider",
-        label_visibility="collapsed",
-        on_change=mark_satisfaction_interaction
-    )
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        if st.session_state.slider_interactions.get("satisfaction", False):
-            st.caption("✅ 1 = Very dissatisfied → 7 = Very satisfied")
-        else:
-            st.caption("⏸️ 1 = Very dissatisfied → 7 = Very satisfied")
-    with col2:
-        if not st.session_state.slider_interactions.get("satisfaction", False):
-            if st.button("Confirm Selection", key="confirm_satisfaction", help="Click to confirm your slider choice"):
-                st.session_state.slider_interactions["satisfaction"] = True
-                st.rerun()
-    
-    st.markdown("**How successfully did you resolve any conflicts that arose?**")
-    def mark_conflict_interaction():
-        st.session_state.slider_interactions["conflict_resolve"] = True
-    
-    survey_responses['conflict_resolve'] = st.slider(
-        "", 
-        min_value=1, max_value=7, value=4,
-        format="%d",
-        help="1 = Not at all, 7 = Completely",
-        key="conflict_slider",
-        label_visibility="collapsed",
-        on_change=mark_conflict_interaction
-    )
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        if st.session_state.slider_interactions.get("conflict_resolve", False):
-            st.caption("✅ 1 = Not at all → 7 = Completely")
-        else:
-            st.caption("⏸️ 1 = Not at all → 7 = Completely")
-    with col2:
-        if not st.session_state.slider_interactions.get("conflict_resolve", False):
-            if st.button("Confirm Selection", key="confirm_conflict", help="Click to confirm your slider choice"):
-                st.session_state.slider_interactions["conflict_resolve"] = True
-                st.rerun()
-    
-    st.markdown("**How natural and realistic did the AI agent seem during your interaction?**")
-    def mark_believability_interaction():
-        st.session_state.slider_interactions["believability"] = True
-    
-    survey_responses['believability'] = st.slider(
-        "", 
-        min_value=1, max_value=7, value=4,
-        format="%d",
-        help="1 = Not at all, 7 = Completely",
-        key="believability_slider",
-        label_visibility="collapsed",
-        on_change=mark_believability_interaction
-    )
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        if st.session_state.slider_interactions.get("believability", False):
-            st.caption("✅ 1 = Not at all → 7 = Completely")
-        else:
-            st.caption("⏸️ 1 = Not at all → 7 = Completely")
-    with col2:
-        if not st.session_state.slider_interactions.get("believability", False):
-            if st.button("Confirm Selection", key="confirm_believability", help="Click to confirm your slider choice"):
-                st.session_state.slider_interactions["believability"] = True
-                st.rerun()
-    
-    st.markdown("**How well did you feel the AI agent built upon and engaged with your points and ideas during the interaction?**")
-    def mark_transactivity_interaction():
-        st.session_state.slider_interactions["transactivity"] = True
-    
-    survey_responses['transactivity'] = st.slider(
-        "", 
-        min_value=1, max_value=5, value=3,
-        format="%d",
-        help="1 = Mostly ignored, 3 = Surface-level acknowledged, 5 = Meaningfully engaged",
-        key="transactivity_slider",
-        label_visibility="collapsed",
-        on_change=mark_transactivity_interaction
-    )
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        if st.session_state.slider_interactions.get("transactivity", False):
-            st.caption("✅ 1 = Mostly ignored my talking points • 3 = Surface-level acknowledged what I said but didn't engage with my points • 5 = Meaningfully engaged with my points and incorporated them into its talking points")
-        else:
-            st.caption("⏸️ 1 = Mostly ignored my talking points • 3 = Surface-level acknowledged what I said but didn't engage with my points • 5 = Meaningfully engaged with my points and incorporated them into its talking points")
-    with col2:
-        if not st.session_state.slider_interactions.get("transactivity", False):
-            if st.button("Confirm Selection", key="confirm_transactivity", help="Click to confirm your slider choice"):
-                st.session_state.slider_interactions["transactivity"] = True
-                st.rerun()
-    
-    st.markdown("**How truthful was the AI agent during your interaction?**")
-    def mark_truthfulness_interaction():
-        st.session_state.slider_interactions["truthfulness"] = True
-    
-    survey_responses['truthfulness'] = st.slider(
-        "", 
-        min_value=1, max_value=7, value=4,
-        format="%d",
-        help="1 = Not at all, 7 = Completely",
-        key="truthfulness_slider",
-        label_visibility="collapsed",
-        on_change=mark_truthfulness_interaction
-    )
-    
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        if st.session_state.slider_interactions.get("truthfulness", False):
-            st.caption("✅ 1 = Not at all → 7 = Completely")
-        else:
-            st.caption("⏸️ 1 = Not at all → 7 = Completely")
-    with col2:
-        if not st.session_state.slider_interactions.get("truthfulness", False):
-            if st.button("Confirm Selection", key="confirm_truthfulness", help="Click to confirm your slider choice"):
-                st.session_state.slider_interactions["truthfulness"] = True
-                st.rerun()
-    
-    return survey_responses
+    for i, debug_info in enumerate(st.session_state.debug_prompt_info):
+        with st.expander(f"Turn {debug_info['turn_number']}: {debug_info['agent_name']} ({debug_info['transparency']} transparency)"):
+            
+            # Show full context sent to AI
+            st.markdown("**Full Context Sent to AI:**")
+            st.code(debug_info['full_context'], language="text")
+            
+            # Show AI response
+            st.markdown("**AI Response:**")
+            st.write(debug_info['ai_response'])
+            
+            # Show breakdown
+            st.markdown("**Context Breakdown:**")
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                if debug_info['scenario_context']:
+                    st.markdown("**Scenario Context:**")
+                    st.code(debug_info['scenario_context'], language="text")
+                
+                st.markdown("**Human Message:**")  
+                st.code(debug_info['human_message'], language="text")
+            
+            with col2:
+                if debug_info['conversation_context']:
+                    st.markdown("**Conversation History:**")
+                    st.code(debug_info['conversation_context'], language="text")
+                else:
+                    st.info("No conversation history yet")
 
 
 def simple_user_study_interface() -> None:
     """Simple user study interface with manual conversation flow"""
     initialize_simple_session_state()
+    
+    # Force page to start at top and create clear starting point
+    st.markdown("<!-- Page Start -->", unsafe_allow_html=True)
+    
+    # Add scroll control and ensure page starts at top
+    st.markdown("""
+    <script>
+    // Force scroll to top when page loads
+    window.onload = function() {
+        window.scrollTo(0, 0);
+    };
+    // Also scroll to top on any page interaction
+    document.addEventListener('DOMContentLoaded', function() {
+        window.scrollTo(0, 0);
+    });
+    </script>
+    """, unsafe_allow_html=True)
     
     # Hide sidebar and navigation for participants (do this first!)
     participant_mode = st.query_params.get("participant", st.query_params.get("p", "false")).lower() == "true"
@@ -1323,52 +1352,57 @@ def simple_user_study_interface() -> None:
         # Initialize assessment session state if needed
         if "assessment_responses" not in st.session_state:
             st.session_state.assessment_responses = {}
+        if "prestudy_responses" not in st.session_state:
+            st.session_state.prestudy_responses = {}
         
-        st.title("📋 Personality Assessment")
+        st.title("📋 Pre-Study Survey")
         st.info("""
-        Before starting the conversation, please complete this brief personality assessment.
+        Before starting the conversation, please complete this brief survey.
         
-        For each statement, indicate how accurately it describes you.
-        
-        Please answer honestly based on how you generally feel and behave.
+        Please answer honestly based on your experiences and opinions.
         """)
         
-        # Display all questions first
+        # render_question function imported from ui.surveys.questions
+        
+        # Section 1: Personality Questions
+        st.markdown("## Part 1: Personality Assessment")
+        st.markdown("*For each statement, indicate how accurately it describes you.*")
+        
         for q_num in sorted(PERSONALITY_QUESTIONS.keys()):
             question_data = PERSONALITY_QUESTIONS[q_num]
-            st.markdown(f"**{question_data['text']}**")
-            
-            # Create response options
-            response_options = [
-                "1 - Very Inaccurate",
-                "2 - Moderately Inaccurate", 
-                "3 - Neither Accurate nor Inaccurate",
-                "4 - Moderately Accurate",
-                "5 - Very Accurate"
-            ]
-            
-            # Get current response or default to None
-            current_response = st.session_state.assessment_responses.get(q_num, None)
-            
-            # Use radio buttons for easier selection
-            response = st.radio(
-                "",
-                options=response_options,
-                index=current_response - 1 if current_response is not None else None,
-                key=f"question_{q_num}",
-                label_visibility="collapsed",
-                horizontal=True
-            )
-            
-            # Update session state - convert response back to numeric value
-            if response is not None:
-                # Extract the numeric value from "1 - Very Inaccurate" format
-                numeric_response = int(response.split(" - ")[0])
-                st.session_state.assessment_responses[q_num] = numeric_response
+            render_question(q_num, question_data, "assessment_responses")
         
-        # Calculate progress AFTER all questions are rendered
-        total_questions = len(PERSONALITY_QUESTIONS)
-        completed_questions = len([q for q in st.session_state.assessment_responses.values() if q is not None])
+        # Section 2: AI Experience Questions
+        st.markdown("## Part 2: AI Experience")
+        st.markdown("*Please answer questions about your experience with conversational AI systems.*")
+        
+        for q_num in sorted(AI_EXPERIENCE_QUESTIONS.keys()):
+            question_data = AI_EXPERIENCE_QUESTIONS[q_num]
+            render_question(q_num, question_data, "prestudy_responses")
+        
+        # Section 3: AI Attitude Questions
+        st.markdown("## Part 3: AI Attitudes")
+        st.markdown("*Please rate your agreement with each statement about conversational AI systems (like ChatGPT, Claude, etc.):*")
+        
+        for q_num in sorted(AI_ATTITUDE_QUESTIONS.keys()):
+            question_data = AI_ATTITUDE_QUESTIONS[q_num]
+            render_question(q_num, question_data, "prestudy_responses")
+        
+        # Section 4: Trust and Negotiation Background
+        st.markdown("## Part 4: Trust and Negotiation Background")
+        st.markdown("*Please indicate your agreement with the following statements:*")
+        
+        for q_num in sorted(TRUST_NEGOTIATION_QUESTIONS.keys()):
+            question_data = TRUST_NEGOTIATION_QUESTIONS[q_num]
+            render_question(q_num, question_data, "prestudy_responses")
+        
+        # count_completed_responses function imported from ui.surveys.questions
+        
+        total_questions = (len(PERSONALITY_QUESTIONS) + len(AI_EXPERIENCE_QUESTIONS) + 
+                          len(AI_ATTITUDE_QUESTIONS) + len(TRUST_NEGOTIATION_QUESTIONS))
+        completed_personality = count_completed_responses(st.session_state.assessment_responses)
+        completed_prestudy = count_completed_responses(st.session_state.prestudy_responses)
+        completed_questions = completed_personality + completed_prestudy
         
         # Display progress
         progress = completed_questions / total_questions
@@ -1389,11 +1423,12 @@ def simple_user_study_interface() -> None:
                     "classification": classification
                 }
                 
-                # Save to database
+                # Save to database including pre-study responses
                 assessment_id = PersonalityAssessmentTracker.save_assessment(
                     st.session_state.participant_id,
                     st.session_state.assessment_responses, 
-                    scores
+                    scores,
+                    st.session_state.prestudy_responses
                 )
                 
                 if assessment_id:
@@ -1411,131 +1446,7 @@ def simple_user_study_interface() -> None:
     # Page header
     st.title("🔬 Human-AI Conversation Study")
     
-    # Show assignment tracker dashboard for researchers (when p=false)
-    if not participant_mode and BalancedAssignmentManager:
-        st.markdown("---")
-        st.markdown("### 📊 **Assignment Balance Dashboard**")
-        
-        try:
-            # Get assignment statistics
-            stats = BalancedAssignmentManager.get_assignment_statistics()
-            
-            # Always show the dashboard structure, even with no data
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric("Total Assignments", stats.get("total_assignments", 0))
-            
-            with col2:
-                st.metric("Personality Types", len(stats.get("personality_types", [])))
-            
-            with col3:
-                st.metric("Agent Conditions", len(stats.get("intervention_combinations", [])))
-            
-            if stats.get("total_assignments", 0) > 0:
-                
-                # Create detailed breakdown
-                if stats["assignment_balance"]:
-                    st.markdown("#### 🎯 **Detailed Assignment Breakdown**")
-                    
-                    # Group by personality type
-                    personality_data = {}
-                    for key, data in stats["assignment_balance"].items():
-                        personality_type = data["personality_type"]
-                        if personality_type not in personality_data:
-                            personality_data[personality_type] = {}
-                        
-                        personality_data[personality_type][data["intervention_combination"]] = data
-                    
-                    # Display in expandable sections
-                    for personality_type in sorted(personality_data.keys()):
-                        with st.expander(f"**{personality_type.replace('_', ' ').title()}** ({sum(combo['total'] for combo in personality_data[personality_type].values())} assignments)"):
-                            
-                            # Create a table for this personality type
-                            assignment_data = []
-                            for intervention_combo, data in personality_data[personality_type].items():
-                                # Parse intervention combination
-                                parts = intervention_combo.split('_')
-                                intervention_summary = []
-                                for i in range(0, len(parts), 2):
-                                    if i+1 < len(parts):
-                                        dimension = parts[i]
-                                        value = parts[i+1]
-                                        intervention_summary.append(f"{dimension.upper()}:{value}")
-                                
-                                assignment_data.append({
-                                    "Agent Condition": " | ".join(intervention_summary),
-                                    "Total Assignments": data["total"],
-                                    "Agent Breakdown": ", ".join([f"{agent}: {count}" for agent, count in data["agent_assignments"].items()]),
-                                    "Last Updated": data.get("updated_at", "Unknown")[:19] if data.get("updated_at") else "Unknown"
-                                })
-                            
-                            if assignment_data:
-                                import pandas as pd
-                                df = pd.DataFrame(assignment_data)
-                                st.dataframe(df, use_container_width=True)
-                            else:
-                                st.info("No assignments yet for this personality type.")
-                
-                # Balance analysis
-                st.markdown("#### ⚖️ **Balance Analysis**")
-                
-                # Calculate balance across personality types
-                personality_totals = {}
-                for data in stats["assignment_balance"].values():
-                    p_type = data["personality_type"]
-                    personality_totals[p_type] = personality_totals.get(p_type, 0) + data["total"]
-                
-                if personality_totals:
-                    # Create a bar chart
-                    import pandas as pd
-                    balance_df = pd.DataFrame(list(personality_totals.items()), 
-                                            columns=["Personality Type", "Assignments"])
-                    balance_df["Personality Type"] = balance_df["Personality Type"].str.replace("_", " ").str.title()
-                    
-                    st.bar_chart(balance_df.set_index("Personality Type"))
-                    
-                    # Show balance warnings
-                    max_assignments = max(personality_totals.values())
-                    min_assignments = min(personality_totals.values())
-                    balance_ratio = min_assignments / max_assignments if max_assignments > 0 else 1.0
-                    
-                    if balance_ratio < 0.7:
-                        st.warning(f"⚠️ **Assignment imbalance detected!** Ratio: {balance_ratio:.2f}")
-                        under_represented = [p_type for p_type, count in personality_totals.items() 
-                                           if count < max_assignments * 0.7]
-                        st.info(f"Under-represented: {', '.join(under_represented)}")
-                    else:
-                        st.success(f"✅ **Good balance!** Ratio: {balance_ratio:.2f}")
-                
-                # Export option
-                if st.button("📥 Export Assignment Report"):
-                    try:
-                        from ui.assignment_tracker import export_assignment_balance_report
-                        report_file = export_assignment_balance_report()
-                        if report_file:
-                            st.success(f"Report exported to: {report_file}")
-                        else:
-                            st.error("Failed to export report")
-                    except Exception as e:
-                        st.error(f"Export failed: {e}")
-                        
-            else:
-                st.markdown("#### 📋 **Getting Started**")
-                st.info("No assignments recorded yet. Start running studies to see balance data.")
-                st.markdown("**To populate this dashboard:**")
-                st.markdown("1. Run user studies with `p=true` (participant mode)")
-                st.markdown("2. Complete conversations and surveys") 
-                st.markdown("3. Assignment data will appear here automatically")
-                
-        except Exception as e:
-            st.error(f"Error loading assignment dashboard: {e}")
-            st.markdown("**Troubleshooting:**")
-            st.markdown("- Check that Redis is running: `redis-cli ping`")
-            st.markdown("- Verify Redis connection settings")
-            st.markdown("- Check if the database contains any data")
-        
-        st.markdown("---")
+    # Assignment balance dashboard removed (personality-based balancing disabled)
     
     # Check if in participant mode
     participant_mode = st.query_params.get("participant", st.query_params.get("p", "false")).lower() == "true"
@@ -1655,14 +1566,11 @@ def simple_user_study_interface() -> None:
                 st.error(f"Error with database export: {str(e)}")
                 st.button("💾 Export Database", disabled=True, use_container_width=True)
         
-        st.markdown("---")
         st.markdown("## 👥 **User Study Interface**")
         st.markdown("Use the interface below to test the user study flow or conduct actual sessions.")
     
     else:
         st.markdown("Welcome to our research study! Please read your role carefully and engage naturally in the conversation.")
-    
-    st.markdown("---")
     
     # Display role information
     display_user_role_simple()
@@ -1675,110 +1583,166 @@ def simple_user_study_interface() -> None:
         display_conversation_history()
         st.markdown("---")
     
+    # Debug sections for researchers - moved outside conversation area for better accessibility
+    participant_mode = st.query_params.get("participant", st.query_params.get("p", "false")).lower() == "true"
+    if not participant_mode:
+        col1, col2 = st.columns(2)
+        with col1:
+            with st.expander("🔧 Agent Selection Details (Debug)", expanded=False):
+                st.markdown("**URL Intervention Dimensions:**")
+                st.json(st.session_state.interventions)
+                st.markdown("**Selected Agent Profile:**")
+                st.markdown(f"Agent Key: `{st.session_state.agent_choice_1}`")
+                st.markdown(f"Intervention Mapping: {st.session_state.interventions}")
+        
+        with col2:
+            with st.expander("🔍 AI Agent Prompts (Debug)", expanded=False):
+                display_debug_prompts()
+        
+        st.markdown("---")
+    
     # Combined AI agent info and conversation input area
     if not st.session_state.conversation_history:
         # Show AI agent info and conversation starter
         if st.session_state.agent_choice_1 in st.session_state.agent_dict:
             ai_agent = st.session_state.agent_dict[st.session_state.agent_choice_1]
             st.markdown("### 💬 **Start the Conversation**")
-            st.markdown(f"You will be conversing with an AI agent (**{ai_agent.get('occupation', 'Assistant')}**). Type your message below to begin.")
-            
-            # Show debug info for researchers only
-            participant_mode = st.query_params.get("participant", st.query_params.get("p", "false")).lower() == "true"
-            if not participant_mode:
-                with st.expander("🔧 Agent Selection Details (Debug)", expanded=False):
-                    st.markdown("**URL Intervention Dimensions:**")
-                    st.json(st.session_state.interventions)
-                    st.markdown("**Selected Agent Profile:**")
-                    st.markdown(f"Agent Key: `{st.session_state.agent_choice_1}`")
-                    st.markdown(f"Intervention Mapping: {st.session_state.interventions}")
+            # Get dynamic occupation based on scenario
+            scenario_occupation = get_scenario_occupation(st.session_state.scenario_choice)
+            st.markdown(f"You will be conversing with an AI agent (**{scenario_occupation}**). Type your message below to begin.")
         else:
             st.markdown("### 💬 **Start the Conversation**")
     else:
         st.markdown("### 💬 **Your Response**")
     
+    # Disable text input during AI response generation
+    placeholder_text = "AI is generating response..." if st.session_state.generating_response else "Type what you want to say..."
+    
     human_input = st.text_area(
         label="Your message", 
-        placeholder="Type what you want to say...",
+        placeholder=placeholder_text,
         height=100,
         key=f"human_input_{st.session_state.turn_number}",
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        disabled=st.session_state.generating_response
     )
     
     # Show buttons based on conversation state
     if not st.session_state.conversation_history:
         # Before conversation starts - only show Send Message button
-        if st.button("Send Message", type="primary", use_container_width=True):
+        button_text = "Generating..." if st.session_state.generating_response else "Send Message"
+        button_disabled = st.session_state.generating_response
+        
+        # Show loading indicator if generating
+        if st.session_state.generating_response:
+            with st.spinner("AI is thinking..."):
+                st.empty()  # Placeholder for spinner
+        
+        # Check if we should be generating a response (state-based approach)
+        if st.session_state.get('pending_message_1'):
+            # We're in a state where we need to generate AI response
+            human_message = st.session_state.pending_message_1
+            st.session_state.pending_message_1 = None  # Clear the pending message
+            
+            # Start the conversation automatically on first message
+            st.session_state.study_active = True
+            st.session_state.turn_number = 0
+            
+            # Add human message to history
+            st.session_state.conversation_history.append({
+                'speaker': 'Human',
+                'content': human_message,
+                'action_type': 'speak'
+            })
+            
+            # Generate AI response
+            ai_response = simulate_ai_response(human_message)
+            ai_name = st.session_state.agent_dict[st.session_state.agent_choice_1].get('first_name', 'AI')
+            
+            st.session_state.conversation_history.append({
+                'speaker': ai_name,
+                'content': ai_response,
+                'action_type': 'speak'
+            })
+            
+            st.session_state.turn_number += 1
+            st.session_state.generating_response = False
+            st.rerun()
+        
+        if st.button(button_text, type="primary", use_container_width=True, disabled=button_disabled):
             if human_input.strip():
-                # Start the conversation automatically on first message
-                st.session_state.study_active = True
-                st.session_state.turn_number = 0
-                
-                # Add human message to history
-                st.session_state.conversation_history.append({
-                    'speaker': 'Human',
-                    'content': human_input.strip(),
-                    'action_type': 'speak'
-                })
-                
-                # Generate AI response
-                ai_response = simulate_ai_response(human_input.strip())
-                ai_name = st.session_state.agent_dict[st.session_state.agent_choice_1].get('first_name', 'AI')
-                
-                st.session_state.conversation_history.append({
-                    'speaker': ai_name,
-                    'content': ai_response,
-                    'action_type': 'speak'
-                })
-                
-                st.session_state.turn_number += 1
+                # Set up for generation on next run
+                st.session_state.pending_message_1 = human_input.strip()
+                st.session_state.generating_response = True
                 st.rerun()
             else:
                 st.error("Please enter a message")
     else:
         # After conversation has started - show both buttons
+        
+        # Show loading indicator if generating
+        if st.session_state.generating_response:
+            with st.spinner("AI is thinking..."):
+                st.empty()  # Placeholder for spinner
+        
+        # Check if we should be generating a response (state-based approach)
+        if st.session_state.get('pending_message_2'):
+            # We're in a state where we need to generate AI response
+            human_message = st.session_state.pending_message_2
+            st.session_state.pending_message_2 = None  # Clear the pending message
+            
+            # Check if we've reached max turns (each message = 1 turn)
+            if len(st.session_state.conversation_history) >= st.session_state.max_turns:
+                st.warning(f"Maximum conversation turns ({st.session_state.max_turns}) reached. Conversation will end.")
+                st.session_state.study_active = False
+                st.success("Conversation ended due to turn limit. Thank you for participating!")
+                st.session_state.generating_response = False
+                st.rerun()
+                return
+            
+            # Add human message to history
+            st.session_state.conversation_history.append({
+                'speaker': 'Human',
+                'content': human_message,
+                'action_type': 'speak'
+            })
+            
+            # Generate AI response
+            ai_response = simulate_ai_response(human_message)
+            ai_name = st.session_state.agent_dict[st.session_state.agent_choice_1].get('first_name', 'AI')
+            
+            st.session_state.conversation_history.append({
+                'speaker': ai_name,
+                'content': ai_response,
+                'action_type': 'speak'
+            })
+            
+            st.session_state.turn_number += 1
+            
+            # Check if we've now reached max turns after AI response
+            if len(st.session_state.conversation_history) >= st.session_state.max_turns:
+                st.session_state.study_active = False
+                # Note: Don't save here, wait for survey completion
+            
+            st.session_state.generating_response = False
+            st.rerun()
+        
         col1, col2 = st.columns([1, 1])
         with col1:
-            if st.button("Send Message", type="primary"):
+            button_text = "Generating..." if st.session_state.generating_response else "Send Message"
+            button_disabled = st.session_state.generating_response
+            
+            if st.button(button_text, type="primary", disabled=button_disabled):
                 if human_input.strip():
-                    # Check if we've reached max turns (each message = 1 turn)
-                    if len(st.session_state.conversation_history) >= st.session_state.max_turns:
-                        st.warning(f"Maximum conversation turns ({st.session_state.max_turns}) reached. Conversation will end.")
-                        st.session_state.study_active = False
-                        st.success("Conversation ended due to turn limit. Thank you for participating!")
-                        st.rerun()
-                        return
-                    
-                    # Add human message to history
-                    st.session_state.conversation_history.append({
-                        'speaker': 'Human',
-                        'content': human_input.strip(),
-                        'action_type': 'speak'
-                    })
-                    
-                    # Generate AI response
-                    ai_response = simulate_ai_response(human_input.strip())
-                    ai_name = st.session_state.agent_dict[st.session_state.agent_choice_1].get('first_name', 'AI')
-                    
-                    st.session_state.conversation_history.append({
-                        'speaker': ai_name,
-                        'content': ai_response,
-                        'action_type': 'speak'
-                    })
-                    
-                    st.session_state.turn_number += 1
-                    
-                    # Check if we've now reached max turns after AI response
-                    if len(st.session_state.conversation_history) >= st.session_state.max_turns:
-                        st.session_state.study_active = False
-                        # Note: Don't save here, wait for survey completion
-                    
+                    # Set up for generation on next run
+                    st.session_state.pending_message_2 = human_input.strip()
+                    st.session_state.generating_response = True
                     st.rerun()
                 else:
                     st.error("Please enter a message")
         
         with col2:
-            if st.button("End Conversation", type="secondary"):
+            if st.button("End Conversation", type="secondary", disabled=st.session_state.generating_response):
                 st.session_state.study_active = False
                 # Note: Don't save here, wait for survey completion
     
@@ -1833,6 +1797,9 @@ def simple_user_study_interface() -> None:
                             st.session_state.get('prolific_params', {}),
                             survey_responses
                         )
+                        
+                        # Assignment recording removed (personality-based balancing disabled)
+                        
                         if session_id:
                             st.session_state.saved_session_id = session_id
                             st.rerun()
@@ -1866,7 +1833,7 @@ def simple_user_study_interface() -> None:
                     "interventions": st.session_state.interventions,
                     "agent_attributes": {
                         "name": f"{agent_profile_data.get('first_name', '')} {agent_profile_data.get('last_name', '')}".strip(),
-                        "occupation": agent_profile_data.get('occupation', ''),
+                        "occupation": get_scenario_occupation(st.session_state.scenario_choice),
                         "decision_making_style": agent_profile_data.get('decision_making_style', '')
                     },
                     "conversation_stats": {
