@@ -24,6 +24,19 @@ from sotopia.database import EpisodeLog, AgentProfile, EnvironmentProfile
 from sotopia.transparency_hook import make_transparency_agent
 from sotopia.messages import Observation, AgentAction
 
+# Import utility modules
+from ui.consent_form_content import CONSENT_FORM_TEXT
+from ui.scenario_display_utils import (
+    clean_and_format_goal_text,
+    add_text_formatting,
+    format_job_negotiation_text,
+    format_non_job_text,
+    create_styled_container,
+    generate_inline_salary_chart,
+    generate_inline_date_chart,
+    generate_negotiation_tables
+)
+
 # Import survey modules
 from ui.surveys.personality import (
     PERSONALITY_QUESTIONS,
@@ -58,180 +71,6 @@ def get_scenario_occupation(scenario_codename: str) -> str:
     else:
         return "Assistant"  # Generic fallback
 
-
-def generate_inline_salary_chart(goal_text: str, scenario_codename: str):
-    """Generate inline salary bar chart"""
-    import re
-    import pandas as pd
-    import altair as alt
-    
-    # Parse salary information
-    salary_data = []
-    salary_pattern = r'\$(\d{2,3}),000\s+gives\s+you\s+(\d+)\s*points?'
-    salary_matches = re.findall(salary_pattern, goal_text)
-    
-    for match in salary_matches:
-        salary_amount = int(match[0])
-        points = int(match[1])
-        salary_data.append({
-            'Salary': f'${salary_amount},000',
-            'Amount': salary_amount,
-            'Points': points
-        })
-    
-    # Sort salary data by salary amount (ascending - lowest to highest)
-    salary_data.sort(key=lambda x: x['Amount'])
-    
-    if salary_data:
-        st.markdown("##### 💰 **Salary Points**")
-        # Create horizontal salary bar chart using Altair
-        salary_df = pd.DataFrame(salary_data)
-        salary_chart = alt.Chart(salary_df).mark_bar().encode(
-            x=alt.X('Points:Q', title='Points'),
-            y=alt.Y('Salary:N', title='Salary', sort=alt.EncodingSortField(field='Amount', order='ascending')),
-            color=alt.Color('Points:Q', scale=alt.Scale(scheme='blues'), legend=None),
-            tooltip=['Salary', 'Points']
-        ).properties(
-            height=180,
-            width=400
-        )
-        st.altair_chart(salary_chart, use_container_width=True)
-
-
-def generate_inline_date_chart(goal_text: str, scenario_codename: str):
-    """Generate inline date bar chart"""
-    import re
-    import pandas as pd
-    import altair as alt
-    from datetime import datetime
-    
-    # Parse starting date information
-    date_data = []
-    date_pattern = r'((?:June|July|August)\s+\d{1,2})\s+gives\s+you\s+(\d+)\s*points?'
-    date_matches = re.findall(date_pattern, goal_text)
-    
-    for match in date_matches:
-        date_str = match[0]
-        points = int(match[1])
-        # Parse the date string to datetime for proper sorting
-        try:
-            date_obj = datetime.strptime(f"{date_str} 2024", "%B %d %Y")
-        except ValueError:
-            # Fallback if parsing fails
-            date_obj = datetime.now()
-        
-        date_data.append({
-            'Starting Date': date_str,
-            'Points': points,
-            'date_obj': date_obj
-        })
-    
-    # Sort date data by actual date (reverse chronological order - latest to earliest)
-    date_data.sort(key=lambda x: x['date_obj'], reverse=True)
-    
-    if date_data:
-        st.markdown("##### 📅 **Start Date Points**")
-        # Create horizontal date bar chart using Altair
-        date_df = pd.DataFrame(date_data)
-        # Create a proper date sorting order
-        date_order = [item['Starting Date'] for item in date_data]
-        date_chart = alt.Chart(date_df).mark_bar().encode(
-            x=alt.X('Points:Q', title='Points'),
-            y=alt.Y('Starting Date:N', title='Starting Date', sort=date_order),
-            color=alt.Color('Points:Q', scale=alt.Scale(scheme='greens'), legend=None),
-            tooltip=['Starting Date', 'Points']
-        ).properties(
-            height=180,
-            width=400
-        )
-        st.altair_chart(date_chart, use_container_width=True)
-
-
-def generate_negotiation_tables(goal_text: str, scenario_codename: str):
-    """Generate bar charts for job negotiation scenarios showing salary and start date point values (legacy function)"""
-    import re
-    import pandas as pd
-    
-    # Parse salary information
-    salary_data = []
-    salary_pattern = r'\$(\d{2,3}),000\s+gives\s+you\s+(\d+)\s*points?'
-    salary_matches = re.findall(salary_pattern, goal_text)
-    
-    for match in salary_matches:
-        salary_amount = int(match[0])
-        points = int(match[1])
-        salary_data.append({
-            'Salary': f'${salary_amount},000',
-            'Amount': salary_amount,
-            'Points': points
-        })
-    
-    # Sort salary data by salary amount (ascending - lowest to highest)
-    salary_data.sort(key=lambda x: x['Amount'])
-    
-    # Parse starting date information
-    date_data = []
-    date_pattern = r'((?:June|July|August)\s+\d{1,2})\s+gives\s+you\s+(\d+)\s*points?'
-    date_matches = re.findall(date_pattern, goal_text)
-    
-    from datetime import datetime
-    for match in date_matches:
-        date_str = match[0]
-        points = int(match[1])
-        # Parse the date string to datetime for proper sorting
-        try:
-            date_obj = datetime.strptime(f"{date_str} 2024", "%B %d %Y")
-        except ValueError:
-            # Fallback if parsing fails
-            date_obj = datetime.now()
-        
-        date_data.append({
-            'Starting Date': date_str,
-            'Points': points,
-            'date_obj': date_obj
-        })
-    
-    # Sort date data by actual date (reverse chronological order - latest to earliest)
-    date_data.sort(key=lambda x: x['date_obj'], reverse=True)
-    
-    if salary_data and date_data:
-        st.markdown("#### **Point Values**")
-        
-        # Create two columns for side-by-side bar charts
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("##### 💰 **Salary Points**")
-            # Create horizontal salary bar chart using Altair
-            import altair as alt
-            salary_df = pd.DataFrame(salary_data)
-            salary_chart = alt.Chart(salary_df).mark_bar().encode(
-                x=alt.X('Points:Q', title='Points'),
-                y=alt.Y('Salary:N', title='Salary', sort=alt.EncodingSortField(field='Amount', order='ascending')),
-                color=alt.Color('Points:Q', scale=alt.Scale(scheme='blues'), legend=None),
-                tooltip=['Salary', 'Points']
-            ).properties(
-                height=200,
-                width=300
-            )
-            st.altair_chart(salary_chart, use_container_width=True)
-        
-        with col2:
-            st.markdown("##### 📅 **Start Date Points**")
-            # Create horizontal date bar chart using Altair
-            date_df = pd.DataFrame(date_data)
-            # Create a proper date sorting order
-            date_order = [item['Starting Date'] for item in date_data]
-            date_chart = alt.Chart(date_df).mark_bar().encode(
-                x=alt.X('Points:Q', title='Points'),
-                y=alt.Y('Starting Date:N', title='Starting Date', sort=date_order),
-                color=alt.Color('Points:Q', scale=alt.Scale(scheme='greens'), legend=None),
-                tooltip=['Starting Date', 'Points']
-            ).properties(
-                height=200,
-                width=300
-            )
-            st.altair_chart(date_chart, use_container_width=True)
 
 
 def load_local_scenarios() -> dict[str, dict[Any, Any]]:
@@ -882,127 +721,23 @@ def display_user_role_simple() -> None:
             else:
                 user_goal = current_scenario['agent_goals'][1]  # Human goal for hiring scenarios
             
-            # Remove backstory and strategy hints, keep only the actual goal/task
-            clean_goal = re.sub(r'<extra_info>.*?</extra_info>', '', user_goal, flags=re.DOTALL)
-            clean_goal = re.sub(r'<strategy_hint>.*?</strategy_hint>', '', clean_goal, flags=re.DOTALL)
-            clean_goal = clean_goal.strip()
-            
-            # Comprehensive text formatting fixes
-            # Fix specific problematic patterns
-            clean_goal = re.sub(r'(\d+),(\d+)gives', r'\1,\2 gives', clean_goal)  # "120,000gives" -> "120,000 gives"
-            clean_goal = re.sub(r'(\d+)points', r'\1 points', clean_goal)  # "6000points" -> "6000 points"  
-            clean_goal = re.sub(r'you(\d+)', r'you \1', clean_goal)  # "you6000" -> "you 6000"
-            clean_goal = re.sub(r'(\d+)gives', r'\1 gives', clean_goal)  # "115000gives" -> "115000 gives"
-            clean_goal = re.sub(r'points,(\$)', r'points, \1', clean_goal)  # "points,$" -> "points, $"
-            clean_goal = re.sub(r'([a-z])(\d+)', r'\1 \2', clean_goal)  # Add space before numbers
-            clean_goal = re.sub(r'(\d+)([a-z])', r'\1 \2', clean_goal)  # Add space after numbers
-            clean_goal = re.sub(r'([a-z])([A-Z])', r'\1 \2', clean_goal)  # Add space between cases
+            # Clean and format the goal text using utility function
+            clean_goal = clean_and_format_goal_text(user_goal)
             
             if clean_goal:
                 # Check if this is a job negotiation scenario
                 scenario_codename = current_scenario.get('codename', '')
                 is_job_negotiation = 'job_interview' in scenario_codename
                 
-                # Apply common formatting for both job and non-job scenarios FIRST
-                # Add line breaks before sentences that start with key phrases
-                clean_goal = re.sub(
-                    r'\s+(Your salary|Your starting date|These are the only)\b', 
-                    r'<br>\1', 
-                    clean_goal, 
-                    flags=re.IGNORECASE
-                )
-                
-                # Add line breaks before "Do not" only when it starts a new sentence (after period)
-                clean_goal = re.sub(
-                    r'\.\s+(Do not)', 
-                    r'. <br>\1', 
-                    clean_goal, 
-                    flags=re.IGNORECASE
-                )
-                
-                # Add line breaks before "There are X different" patterns
-                clean_goal = re.sub(
-                    r'\s+(There are \d+ different)', 
-                    r'<br>\1', 
-                    clean_goal, 
-                    flags=re.IGNORECASE
-                )
-                
-                # Highlight [IMPORTANT] tags with strong visual emphasis
-                clean_goal = re.sub(
-                    r'\[IMPORTANT\](.*?)(?=\[|$)', 
-                    r'<div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 8px 12px; margin: 8px 0; border-radius: 4px;"><strong>🚨 IMPORTANT:</strong> \1</div>', 
-                    clean_goal, 
-                    flags=re.DOTALL
-                )
-                
-                # Highlight "Your goal is to" sentences for specific scenarios
-                clean_goal = re.sub(
-                    r'(Your goal is to[^.]*\.)', 
-                    r'<div style="background-color: #e7f3ff; border-left: 4px solid #0d6efd; padding: 8px 12px; margin: 8px 0; border-radius: 4px;"><strong>🎯 \1</strong></div>', 
-                    clean_goal, 
-                    flags=re.IGNORECASE
-                )
-                
-                # Highlight key action words
-                key_words = ['negotiate', 'convince', 'persuade', 'achieve', 'obtain', 'secure', 'maximize', 'minimize']
-                for word in key_words:
-                    clean_goal = re.sub(
-                        f'\\b({word})\\b', 
-                        r'<strong style="color: #0d6efd;">\1</strong>', 
-                        clean_goal, 
-                        flags=re.IGNORECASE
-                    )
+                # Apply common text formatting using utility function
+                clean_goal = add_text_formatting(clean_goal)
                 
                 if is_job_negotiation:
-                    # Process non-table content for instructions and important info
-                    formatted_goal = clean_goal
+                    # Format text for job negotiation scenarios using utility function
+                    formatted_goal = format_job_negotiation_text(clean_goal)
                     
-                    # Remove the detailed point breakdown sentences (we'll show charts after all text)
-                    # Remove the sentence after "There are 5 different amounts you can agree on, each associated with a different number of points for you."
-                    formatted_goal = re.sub(
-                        r'There are 5 different amounts you can agree on, each associated with a different number of points for you\.\s*([^.]*gives you \d+ points[^.]*\.)',
-                        r'There are 5 different amounts you can agree on, each associated with a different number of points for you. See the bar chart below for details.',
-                        formatted_goal,
-                        flags=re.DOTALL
-                    )
-                    
-                    # Remove the sentence after "There are 5 different dates you can agree on, each associated with a different number of points for you."
-                    formatted_goal = re.sub(
-                        r'There are 5 different dates you can agree on, each associated with a different number of points for you\.\s*([^.]*gives you \d+ points[^.]*\.)',
-                        r'There are 5 different dates you can agree on, each associated with a different number of points for you. See the bar chart below for details.',
-                        formatted_goal,
-                        flags=re.DOTALL
-                    )
-                    
-                    # Add proper line breaks and section formatting for job scenarios
-                    # Break before major sections like "Salary:" and "Starting Date:" with extra spacing
-                    formatted_goal = re.sub(
-                        r'\b(Salary|Starting Date|Start Date):', 
-                        r'<br><strong style="color: #495057; font-size: 18px;">\1:</strong>', 
-                        formatted_goal, 
-                        flags=re.IGNORECASE
-                    )
-                    
-                    # Clean up extra whitespace and line breaks
-                    formatted_goal = re.sub(r'\n\s*\n\s*\n', '\n\n', formatted_goal)
-                    formatted_goal = formatted_goal.strip()
-                    
-                    # Display all text in one grey box
-                    st.markdown(f"""
-                    <div style="
-                        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                        border: 2px solid #dee2e6;
-                        border-radius: 8px;
-                        padding: 20px;
-                        margin: 16px 0;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    ">
-                        <div style="font-size: 16px; line-height: 1.6; color: #212529;">
-                            {formatted_goal}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    # Display formatted text in styled container
+                    st.markdown(create_styled_container(formatted_goal), unsafe_allow_html=True)
                     
                     # Display both charts side-by-side below the text
                     st.markdown("#### **Point Values**")
@@ -1015,53 +750,31 @@ def display_user_role_simple() -> None:
                         generate_inline_date_chart(clean_goal, current_scenario.get('codename', ''))
                     
                 else:
-                    # Enhanced formatting with highlighting for important sections (non-job scenarios)
-                    formatted_goal = clean_goal
+                    # Format text for non-job scenarios using utility function
+                    formatted_goal = format_non_job_text(clean_goal)
                     
-                    # Add proper line breaks and section formatting
-                    # Break before major sections like "Salary:" and "Starting Date:"
-                    formatted_goal = re.sub(
-                        r'\b(Salary|Starting Date|Start Date):', 
-                        r'<strong style="color: #495057; font-size: 18px;">\1:</strong> ', 
-                        formatted_goal, 
-                        flags=re.IGNORECASE
-                    )
-                    
-                    # For non-job scenarios, highlight numerical values and dates
-                    # Highlight numerical values (salary, points, etc.) with subtle grey background
-                    formatted_goal = re.sub(
-                        r'(\$\d{1,3}(?:,\d{3})*|\d{1,3}(?:,\d{3})*\s*points?)', 
-                        r'<strong style="background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px;">\1</strong>', 
-                        formatted_goal
-                    )
-                    
-                    # Highlight dates (June 1, July 15, etc.)
-                    formatted_goal = re.sub(
-                        r'\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}\b', 
-                        r'<strong style="background-color: #f8f9fa; padding: 2px 4px; border-radius: 3px;">\g<0></strong>', 
-                        formatted_goal, 
-                        flags=re.IGNORECASE
-                    )
-                    
-                    # Display the formatted text for non-job scenarios
-                    st.markdown(f"""
-                    <div style="
-                        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                        border: 2px solid #dee2e6;
-                        border-radius: 8px;
-                        padding: 20px;
-                        margin: 8px 0;
-                        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    ">
-                        <div style="font-size: 16px; line-height: 1.6; color: #212529;">
-                            {formatted_goal}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+                    # Display formatted text in styled container
+                    st.markdown(create_styled_container(formatted_goal), unsafe_allow_html=True)
             else:
                 st.warning("No task goal found - this scenario may not be suitable for user studies")
         else:
             st.warning("No goal information available for this scenario")
+        
+        # Add instruction about ending the conversation
+        st.markdown("""
+        <div style="
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border: 2px solid #2196f3;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 16px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        ">
+            <div style="font-size: 16px; line-height: 1.6; color: #1565c0; text-align: center;">
+                <strong>📋 Important:</strong> End the conversation when you feel you have achieved your stated goal or when you believe no further progress can be made.
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
 
 
@@ -1087,8 +800,7 @@ def display_conversation_history():
                             thinking = thinking_match.group(1).strip()
                             final_response = re.sub(r'<THINK>.*?</THINK>', '', content, flags=re.DOTALL).strip()
                             
-                            with st.expander("🤔 AI's thinking process"):
-                                st.write(thinking)
+                            st.info("🤔 **AI's thinking process:**\n\n" + thinking)
                             st.write(f"**{speaker}**: {final_response}")
                         else:
                             st.write(f"**{speaker}**: {content}")
@@ -1340,6 +1052,28 @@ def simple_user_study_interface() -> None:
         }
         </style>
         """, unsafe_allow_html=True)
+    
+    # Show consent form first for participants
+    if participant_mode and not st.session_state.get("consent_given", False):
+        st.title("📋 Research Study Consent Form")
+        
+        st.markdown(CONSENT_FORM_TEXT)
+        
+        consent_given = st.checkbox(
+            "**I have read and understood the information above, am 18 years or older, in the United States, and agree to participate in this study.**",
+            key="consent_checkbox"
+        )
+        
+        if consent_given:
+            if st.button("Continue to Study", type="primary", use_container_width=True):
+                st.session_state.consent_given = True
+                st.rerun()
+        else:
+            st.warning("⚠️ You must check the consent box to continue the study.")
+            st.button("Continue to Study", disabled=True, use_container_width=True)
+        
+        st.info("💡 If you do not consent, you may close this window.")
+        return  # Stop here until consent is given
     
     # Check if personality assessment is required and not yet completed
     # BUT only block for participants, not researchers
