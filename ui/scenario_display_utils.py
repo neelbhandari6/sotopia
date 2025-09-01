@@ -198,16 +198,31 @@ def generate_inline_salary_chart(goal_text: str, scenario_codename: str = None):
     salary_data = parse_salary_data(goal_text)
     if salary_data:
         st.markdown("##### 💰 **Salary Points**")
-        salary_chart = create_salary_chart(salary_data)
+        # Use only salary data to determine scale
+        salary_points = [item['Points'] for item in salary_data]
+        min_points, max_points = min(salary_points), max(salary_points)
+        padding = (max_points - min_points) * 0.1
+        salary_scale = (max(0, min_points - padding), max_points + padding)
+        
+        salary_chart = create_salary_chart(salary_data, salary_scale)
         st.altair_chart(salary_chart, use_container_width=True)
 
 
 def generate_inline_date_chart(goal_text: str, scenario_codename: str = None):
-    """Generate inline date bar chart."""
+    """Generate inline date bar chart using salary scale."""
     date_data = parse_date_data(goal_text)
+    salary_data = parse_salary_data(goal_text)
     if date_data:
         st.markdown("##### 📅 **Start Date Points**")
-        date_chart = create_date_chart(date_data)
+        # Use salary data scale for consistency
+        if salary_data:
+            salary_points = [item['Points'] for item in salary_data]
+            min_points, max_points = min(salary_points), max(salary_points)
+            padding = (max_points - min_points) * 0.1
+            salary_scale = (max(0, min_points - padding), max_points + padding)
+            date_chart = create_date_chart(date_data, salary_scale)
+        else:
+            date_chart = create_date_chart(date_data)
         st.altair_chart(date_chart, use_container_width=True)
 
 
