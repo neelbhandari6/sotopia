@@ -197,7 +197,7 @@ def display_post_study_survey() -> Dict[str, Any]:
         st.session_state.slider_interactions = {}
     
     # Add instruction for users about slider interaction
-    st.info("📌 **Note**: Please click or drag each slider to indicate your response, even if you want to keep the default middle position.")
+    st.info("📌 **Note**: For slider questions, you can either move the slider to your preferred position or leave it at the middle position (4) if that represents your view.")
     
     # Manipulation Checks Section
     st.markdown("### **Agent Perceptions**")
