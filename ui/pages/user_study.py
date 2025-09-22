@@ -130,21 +130,39 @@ def load_local_agents() -> dict[str, dict[Any, Any]]:
         with open(os.path.join(base_path, "hiring", "agent_profiles", "human_agent_agreeable.json"), 'r', encoding='utf-8') as f:
             agent_list = json.load(f)
             for i, agent in enumerate(agent_list):
+                # Only use agents where first_name is "AI" and last_name is "Agent"
+                if agent.get('first_name') != 'AI' or agent.get('last_name') != 'Agent':
+                    continue
+                    
                 # Create unique identifiers for agents
                 if 'agent_id' not in agent:
                     agent['agent_id'] = f"hiring_agent_{i}"
                 # Create more descriptive keys for the agents
-                personality_type = "Unknown"
+                personality_type_parts = []
                 if "personality_and_values" in agent:
                     personality = agent["personality_and_values"]
                     if "High Transparency" in personality:
-                        personality_type += "_HighT"
+                        personality_type_parts.append("HighT")
                     elif "Low Transparency" in personality:
-                        personality_type += "_LowT"
+                        personality_type_parts.append("LowT")
                     if "High Warmth" in personality:
-                        personality_type += "_HighW"
+                        personality_type_parts.append("HighW")
                     elif "Low Warmth" in personality:
-                        personality_type += "_LowW"
+                        personality_type_parts.append("LowW")
+                    if "High Expertise" in personality:
+                        personality_type_parts.append("HighE")
+                    elif "Low Expertise" in personality:
+                        personality_type_parts.append("LowE")
+                    if "High Adaptability" in personality:
+                        personality_type_parts.append("HighA")
+                    elif "Low Adaptability" in personality:
+                        personality_type_parts.append("LowA")
+                    if "High Theory of Mind" in personality:
+                        personality_type_parts.append("HighTOM")
+                    elif "Low Theory of Mind" in personality:
+                        personality_type_parts.append("LowTOM")
+                
+                personality_type = "_".join(personality_type_parts) if personality_type_parts else "Unknown"
                 
                 key = f"{agent.get('first_name', 'Unknown')} {agent.get('last_name', 'Agent')} ({agent.get('occupation', 'Unknown')}) - {personality_type}"
                 agents[key] = agent
@@ -156,21 +174,39 @@ def load_local_agents() -> dict[str, dict[Any, Any]]:
         with open(os.path.join(base_path, "liedar", "agent_profile", "ai_liedar_run.json"), 'r', encoding='utf-8') as f:
             agent_list = json.load(f)
             for i, agent in enumerate(agent_list):
+                # Only use agents where first_name is "AI" and last_name is "Agent"
+                if agent.get('first_name') != 'AI' or agent.get('last_name') != 'Agent':
+                    continue
+                    
                 # Create unique identifiers for agents
                 if 'agent_id' not in agent:
                     agent['agent_id'] = f"liedar_agent_{i}"
                 # Create more descriptive keys for the agents
-                personality_type = "Unknown"
+                personality_type_parts = []
                 if "personality_and_values" in agent:
                     personality = agent["personality_and_values"]
                     if "High Transparency" in personality:
-                        personality_type += "_HighT"
+                        personality_type_parts.append("HighT")
                     elif "Low Transparency" in personality:
-                        personality_type += "_LowT"
+                        personality_type_parts.append("LowT")
                     if "High Warmth" in personality:
-                        personality_type += "_HighW"
+                        personality_type_parts.append("HighW")
                     elif "Low Warmth" in personality:
-                        personality_type += "_LowW"
+                        personality_type_parts.append("LowW")
+                    if "High Expertise" in personality:
+                        personality_type_parts.append("HighE")
+                    elif "Low Expertise" in personality:
+                        personality_type_parts.append("LowE")
+                    if "High Adaptability" in personality:
+                        personality_type_parts.append("HighA")
+                    elif "Low Adaptability" in personality:
+                        personality_type_parts.append("LowA")
+                    if "High Theory of Mind" in personality:
+                        personality_type_parts.append("HighTOM")
+                    elif "Low Theory of Mind" in personality:
+                        personality_type_parts.append("LowTOM")
+                
+                personality_type = "_".join(personality_type_parts) if personality_type_parts else "Unknown"
                         
                 key = f"{agent.get('first_name', 'Unknown')} {agent.get('last_name', 'Agent')} ({agent.get('occupation', 'Unknown')}) - {personality_type}"
                 agents[key] = agent
@@ -271,6 +307,7 @@ async def get_ai_response_async(human_message: str, agent_profile_data: dict, tr
         action = await agent.aact(observation)
         
         # Handle the action result more robustly
+        action_type = action.action_type if action else 'speak'
         if action and hasattr(action, 'argument') and action.argument:
             result = action.argument
             # Ensure result is a string, not a dict
@@ -282,11 +319,15 @@ async def get_ai_response_async(human_message: str, agent_profile_data: dict, tr
         else:
             result = "I understand."
             
-        print(f"DEBUG ASYNC: Action type: {action.action_type if action else 'None'}")
+        # Handle leave action - format as departure message
+        if action_type == "leave":
+            result = "The AI agent has left the conversation. Please proceed to the survey below."
+            
+        print(f"DEBUG ASYNC: Action type: {action_type}")
         print(f"DEBUG ASYNC: Raw argument: {action.argument if action else 'None'}")
         print(f"DEBUG ASYNC: Processed result: {result[:100]}...")
         
-        # Return both result and debug info (can't store session state in thread)
+        # Return result, action_type, and debug info (can't store session state in thread)
         debug_info = {
             'turn_number': turn_number,
             'full_context': full_context,
@@ -295,11 +336,12 @@ async def get_ai_response_async(human_message: str, agent_profile_data: dict, tr
             'scenario_context': scenario_context,
             'conversation_context': conversation_context,
             'human_message': human_message,
-            'ai_response': result
+            'ai_response': result,
+            'action_type': action_type
         }
         
         print(f"DEBUG ASYNC: Created debug info for turn {turn_number}")
-        return result, debug_info
+        return result, action_type, debug_info
         
     except Exception as e:
         st.error(f"Error getting AI response: {str(e)}")
@@ -322,12 +364,12 @@ async def get_ai_response_async(human_message: str, agent_profile_data: dict, tr
         }
         
         if transparency == "high":
-            return "<THINK>I'm having technical difficulties with the AI generation system. The validation error suggests the agent is returning malformed data instead of a proper string response.</THINK>I apologize, but I'm experiencing some technical difficulties right now. Please try again.", error_debug_info
+            return "<THINK>I'm having technical difficulties with the AI generation system. The validation error suggests the agent is returning malformed data instead of a proper string response.</THINK>I apologize, but I'm experiencing some technical difficulties right now. Please try again.", "speak", error_debug_info
         else:
-            return "I'm sorry, I'm having trouble responding right now.", error_debug_info
+            return "I'm sorry, I'm having trouble responding right now.", "speak", error_debug_info
 
 
-def get_ai_response(human_message: str, agent_profile_data: dict, transparency: str, turn_number: int, conversation_context: str = "", scenario_context: str = "", model_name: str = "gpt-4o") -> str:
+def get_ai_response(human_message: str, agent_profile_data: dict, transparency: str, turn_number: int, conversation_context: str = "", scenario_context: str = "", model_name: str = "gpt-4o") -> tuple[str, str]:
     """Sync wrapper for async AI response function"""
     try:
         # Simplified approach - just use asyncio.run in a thread
@@ -339,9 +381,9 @@ def get_ai_response(human_message: str, agent_profile_data: dict, transparency: 
             )
             result_tuple = future.result(timeout=60)  # 60 second timeout
             
-            # Handle tuple return (result, debug_info)
-            if isinstance(result_tuple, tuple) and len(result_tuple) == 2:
-                result, debug_info = result_tuple
+            # Handle tuple return (result, action_type, debug_info)
+            if isinstance(result_tuple, tuple) and len(result_tuple) == 3:
+                result, action_type, debug_info = result_tuple
                 
                 # Store debug information in session state (main thread)
                 if 'debug_prompt_info' not in st.session_state:
@@ -351,11 +393,11 @@ def get_ai_response(human_message: str, agent_profile_data: dict, transparency: 
                 debug_count = len(st.session_state.debug_prompt_info)
                 print(f"DEBUG SYNC: Stored debug info for turn {turn_number}. Total count: {debug_count}")
                 
-                return result
+                return result, action_type
             else:
                 # Fallback for unexpected return format
                 print(f"DEBUG SYNC: Unexpected return format: {type(result_tuple)}")
-                return str(result_tuple)
+                return str(result_tuple), "speak"
             
     except Exception as e:
         st.error(f"Error in get_ai_response: {str(e)}")
@@ -363,7 +405,7 @@ def get_ai_response(human_message: str, agent_profile_data: dict, transparency: 
         st.error(f"Full traceback: {traceback.format_exc()}")
         print(f"get_ai_response Error: {str(e)}")
         print(f"get_ai_response traceback: {traceback.format_exc()}")
-        return "I'm sorry, I'm having trouble responding right now."
+        return "I'm sorry, I'm having trouble responding right now.", "speak"
 
 
 def save_conversation_to_redis(conversation_history: list, interventions: dict, scenario_choice: str, agent_choice: str, prolific_params: dict = None, survey_responses: dict = None) -> str:
@@ -507,7 +549,7 @@ def export_conversation_to_files(conversation_history: list, interventions: dict
                     scenario_choice,
                     agent_choice,
                     interventions.get('transparency', 'low'),
-                    interventions.get('warmth', 'low'),
+                    interventions.get('warmth', 'high'),
                     interventions.get('expertise', 'high'),
                     interventions.get('adaptability', 'high'),
                     interventions.get('theory_of_mind', 'high'),
@@ -604,13 +646,23 @@ def initialize_simple_session_state() -> None:
         st.session_state.agent_dict = load_local_agents()
         st.session_state.agent_model_dict = get_models_local()
         
+        # Helper function to normalize intervention values (accept h/l or high/low)
+        def normalize_intervention_value(value: str) -> str:
+            value = value.lower().strip()
+            if value in ["h", "high"]:
+                return "high"
+            elif value in ["l", "low"]:
+                return "low"
+            else:
+                return value  # Keep original value if not recognized
+        
         # All five intervention dimensions from URL parameters (support both long and short forms)
         st.session_state.interventions = {
-            "transparency": st.query_params.get("transparency", st.query_params.get("t", "high")).lower(),  # t or transparency
-            "warmth": st.query_params.get("warmth", st.query_params.get("w", "high")).lower(),              # w or warmth  
-            "expertise": st.query_params.get("expertise", st.query_params.get("e", "high")).lower(),       # e or expertise
-            "adaptability": st.query_params.get("adaptability", st.query_params.get("a", "high")).lower(), # a or adaptability
-            "theory_of_mind": st.query_params.get("theory_of_mind", st.query_params.get("tom", "high")).lower() # tom or theory_of_mind
+            "transparency": normalize_intervention_value(st.query_params.get("transparency", st.query_params.get("t", "high"))),  # t or transparency, h/l or high/low
+            "warmth": normalize_intervention_value(st.query_params.get("warmth", st.query_params.get("w", "high"))),              # w or warmth, h/l or high/low
+            "expertise": normalize_intervention_value(st.query_params.get("expertise", st.query_params.get("e", "high"))),       # e or expertise, h/l or high/low
+            "adaptability": normalize_intervention_value(st.query_params.get("adaptability", st.query_params.get("a", "high"))), # a or adaptability, h/l or high/low
+            "theory_of_mind": normalize_intervention_value(st.query_params.get("theory_of_mind", st.query_params.get("tom", "high"))) # tom or theory_of_mind, h/l or high/low
         }
         
         # Extract Prolific parameters if available
@@ -639,7 +691,7 @@ def initialize_simple_session_state() -> None:
             st.session_state.scenario_choice = list(st.session_state.scenarios.keys())[0]
         
         # Check if personality assessment should be used (URL parameter or session state)
-        use_personality_assessment = st.query_params.get("survey", "false").lower() == "true"
+        use_personality_assessment = st.query_params.get("survey", "true").lower() == "true"
         personality_classification = None
         
         # Initialize personality_classification in session state
@@ -698,6 +750,9 @@ def initialize_simple_session_state() -> None:
         
         # Backward compatibility for transparency
         st.session_state.show_ai_thinking = st.session_state.interventions["transparency"] == "high"
+        
+        # Initialize AI opener generation state (don't generate yet)
+        st.session_state.ai_opener_generated = False
 
 
 def display_user_role_simple() -> None:
@@ -706,7 +761,7 @@ def display_user_role_simple() -> None:
         current_scenario = st.session_state.scenarios[st.session_state.scenario_choice]
         
         # Debug info (only for researchers, not participants)
-        participant_mode_debug = st.query_params.get("participant", st.query_params.get("p", "false")).lower() == "true"
+        participant_mode_debug = st.query_params.get("participant", st.query_params.get("p", "true")).lower() == "true"
         if not participant_mode_debug and st.sidebar.checkbox("Show Debug Info", value=False):
             st.sidebar.write("**Scenario Data Structure:**")
             st.sidebar.json(current_scenario)
@@ -783,7 +838,7 @@ def display_conversation_history():
     if st.session_state.conversation_history:
         st.markdown("### 💬 **Conversation**")
         
-        for i, message in enumerate(st.session_state.conversation_history):
+        for message in st.session_state.conversation_history:
             speaker = message.get('speaker', 'Unknown')
             content = message.get('content', '')
             action_type = message.get('action_type', 'speak')
@@ -791,26 +846,109 @@ def display_conversation_history():
             if speaker == 'Human':
                 with st.chat_message("user"):
                     st.write(f"**You**: {content}")
+            elif speaker == 'System':
+                # Handle system messages (like manual conversation ending)
+                if action_type == "leave":
+                    escaped_content = content.replace('$', '&#36;')
+                    st.markdown(f'<div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107; margin-bottom: 10px;"><div style="color: #856404; font-weight: bold; text-align: center;">👋 {escaped_content}</div></div>', unsafe_allow_html=True)
+                else:
+                    st.info(content)
             else:
                 with st.chat_message("assistant"):
-                    if st.session_state.show_ai_thinking and '<THINK>' in content:
+                    # Handle leave action with special styling
+                    if action_type == "leave":
+                        escaped_content = content.replace('$', '&#36;')
+                        st.markdown(f'<div style="background-color: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107; margin-bottom: 10px;"><div style="color: #856404; font-weight: bold; text-align: center;">👋 {escaped_content}</div></div>', unsafe_allow_html=True)
+                    elif st.session_state.show_ai_thinking and '<THINK>' in content:
                         # Show AI thinking if transparency is enabled
                         thinking_match = re.search(r'<THINK>(.*?)</THINK>', content, re.DOTALL)
                         if thinking_match:
                             thinking = thinking_match.group(1).strip()
                             final_response = re.sub(r'<THINK>.*?</THINK>', '', content, flags=re.DOTALL).strip()
                             
-                            st.info("🤔 **AI's thinking process:**\n\n" + thinking)
-                            st.write(f"**{speaker}**: {final_response}")
+                            # Escape dollar signs in thinking and response content  
+                            thinking = thinking.replace('$', '&#36;')
+                            final_response = final_response.replace('$', '&#36;')
+                            
+                            # Light blue container with both thinking and response
+                            st.markdown(f'<div style="background-color: #f0f8ff; padding: 10px; border-radius: 5px; border-left: 3px solid #add8e6; margin-bottom: 10px;"><em style="color: #6495ed;">🤔 <strong>AI\'s thinking process:</strong><br><br>{thinking}</em><br><br><div style="color: black;"><strong>{speaker}:</strong> {final_response}</div></div>', unsafe_allow_html=True)
                         else:
-                            st.write(f"**{speaker}**: {content}")
+                            escaped_content = content.replace('$', '&#36;')
+                            st.markdown(f'<div style="color: black;"><strong>{speaker}:</strong> {escaped_content}</div>', unsafe_allow_html=True)
                     else:
-                        # Hide thinking tags
+                        # Hide thinking tags and show black AI response
                         clean_content = re.sub(r'<THINK>.*?</THINK>', '', content, flags=re.DOTALL).strip()
-                        st.write(f"**{speaker}**: {clean_content}")
+                        clean_content = clean_content.replace('$', '&#36;')
+                        st.markdown(f'<div style="color: black;"><strong>{speaker}:</strong> {clean_content}</div>', unsafe_allow_html=True)
 
 
-def simulate_ai_response(human_message: str) -> str:
+def generate_ai_conversation_starter() -> str:
+    """Generate AI opening message to start the conversation"""
+    try:
+        # Get the selected agent data
+        agent_profile_data = st.session_state.agent_dict[st.session_state.agent_choice_1]
+        
+        # Map transparency intervention to transparency level
+        transparency_level = st.session_state.interventions.get("transparency", "low")
+        
+        # Get model name (you can configure this)
+        model_name = "gpt-4o"  # Default model, can be made configurable
+        
+        # Extract scenario context and AI agent's goal
+        scenario_context = ""
+        
+        if (st.session_state.scenario_choice in st.session_state.scenarios):
+            current_scenario = st.session_state.scenarios[st.session_state.scenario_choice]
+            scenario_description = current_scenario.get('scenario', '')
+            agent_goals = current_scenario.get('agent_goals', [])
+            
+            if len(agent_goals) >= 2:
+                # Determine correct goal index based on scenario type  
+                if current_scenario.get('codename', '').startswith('[ai-liedar]'):
+                    ai_agent_goal = agent_goals[1]  # AI goal for ai-liedar scenarios
+                else:
+                    ai_agent_goal = agent_goals[0]  # AI goal for hiring scenarios
+                
+                # Clean the AI agent's goal (remove strategy hints but keep extra_info)
+                clean_ai_goal = re.sub(r'<strategy_hint>.*?</strategy_hint>', '', ai_agent_goal, flags=re.DOTALL)
+                clean_ai_goal = clean_ai_goal.strip()
+                
+                # Get AI agent's occupation for this scenario
+                ai_occupation = get_scenario_occupation(st.session_state.scenario_choice)
+                
+                # Build scenario context with opening instruction
+                agent_personality = agent_profile_data.get('personality_and_values', '')
+                scenario_context = f"""Here is the context of this interaction:
+Scenario: {scenario_description}
+Your role: {ai_occupation}
+Your goal: {clean_ai_goal}
+Your personality and values: {agent_personality}
+
+Start the conversation with an appropriate greeting and introduction that fits your role and the scenario context. Be natural and engaging, and embody your personality traits."""
+        
+        # Generate opening message directly
+        response, action_type = get_ai_response(
+            human_message="",  # No human message for opening
+            agent_profile_data=agent_profile_data,
+            transparency=transparency_level,
+            turn_number=1,
+            conversation_context="",  # No conversation history yet
+            scenario_context=scenario_context,
+            model_name=model_name
+        )
+        
+        # Return both response and action type for opening message
+        return response, action_type
+        
+    except Exception as e:
+        st.error(f"Error generating AI conversation starter: {str(e)}")
+        import traceback
+        st.error(f"Full traceback: {traceback.format_exc()}")
+        # Re-raise the exception so we can handle it properly in the calling code
+        raise e
+
+
+def simulate_ai_response(human_message: str) -> tuple[str, str]:
     """Get AI response using the actual agent with transparency settings and scenario context"""
     try:
         # Get the selected agent data
@@ -846,11 +984,14 @@ def simulate_ai_response(human_message: str) -> str:
                 ai_occupation = get_scenario_occupation(st.session_state.scenario_choice)
                 
                 # Build scenario context similar to ScriptBackground format
+                agent_personality = agent_profile_data.get('personality_and_values', '')
                 scenario_context = f"""Here is the context of this interaction:
 Scenario: {scenario_description}
 Your role: {ai_occupation}
 Your goal: {clean_ai_goal}
+Your personality and values: {agent_personality}
 
+Remember to embody your personality traits in your responses.
 """
         
         # Build conversation context from history
@@ -864,7 +1005,7 @@ Your goal: {clean_ai_goal}
         current_turn = st.session_state.turn_number + 1
         
         # Get AI response with enhanced context
-        response = get_ai_response(
+        response, action_type = get_ai_response(
             human_message=human_message,
             agent_profile_data=agent_profile_data,
             transparency=transparency_level,
@@ -876,7 +1017,7 @@ Your goal: {clean_ai_goal}
         
         # Reset loading state before returning
         st.session_state.generating_response = False
-        return response
+        return response, action_type
         
     except Exception as e:
         # Reset loading state on error
@@ -884,7 +1025,7 @@ Your goal: {clean_ai_goal}
         st.error(f"Error getting AI response: {str(e)}")
         import traceback
         st.error(f"Full traceback: {traceback.format_exc()}")
-        return "I apologize, but I'm having trouble responding right now. Please try again."
+        return "I apologize, but I'm having trouble responding right now. Please try again.", "speak"
 
 
 # display_post_study_survey function imported from ui.surveys.questions
@@ -904,7 +1045,7 @@ def display_debug_prompts() -> None:
     
     st.markdown("### 🔍 **Debug: AI Agent Prompts**")
     
-    for i, debug_info in enumerate(st.session_state.debug_prompt_info):
+    for debug_info in st.session_state.debug_prompt_info:
         with st.expander(f"Turn {debug_info['turn_number']}: {debug_info['agent_name']} ({debug_info['transparency']} transparency)"):
             
             # Show full context sent to AI
@@ -957,7 +1098,7 @@ def simple_user_study_interface() -> None:
     """, unsafe_allow_html=True)
     
     # Hide sidebar and navigation for participants (do this first!)
-    participant_mode = st.query_params.get("participant", st.query_params.get("p", "false")).lower() == "true"
+    participant_mode = st.query_params.get("participant", st.query_params.get("p", "true")).lower() == "true"
     if participant_mode:
         st.markdown("""
         <style>
@@ -1183,7 +1324,7 @@ def simple_user_study_interface() -> None:
     # Assignment balance dashboard removed (personality-based balancing disabled)
     
     # Check if in participant mode
-    participant_mode = st.query_params.get("participant", st.query_params.get("p", "false")).lower() == "true"
+    participant_mode = st.query_params.get("participant", st.query_params.get("p", "true")).lower() == "true"
     
     if not participant_mode:
         # Show researcher dashboard first
@@ -1309,16 +1450,45 @@ def simple_user_study_interface() -> None:
     # Display role information
     display_user_role_simple()
     
-    st.markdown("---")
+    # Generate AI opener when user first reaches conversation interface
+    if not st.session_state.ai_opener_generated and st.session_state.agent_choice_1 in st.session_state.agent_dict:
+        with st.spinner("AI agent is starting the conversation..."):
+            try:
+                ai_opener, opener_action_type = generate_ai_conversation_starter()
+                ai_name = st.session_state.agent_dict[st.session_state.agent_choice_1].get('first_name', 'AI')
+                
+                st.session_state.conversation_history.append({
+                    'speaker': ai_name,
+                    'content': ai_opener,
+                    'action_type': opener_action_type
+                })
+                
+                # Check if AI immediately leaves on opening (unlikely but possible)
+                if opener_action_type == "leave":
+                    st.session_state.study_active = False
+                    st.warning("The AI agent has left before the conversation could begin.")
+                else:
+                    st.session_state.study_active = True
+                
+                st.session_state.turn_number = 1
+                st.session_state.ai_opener_generated = True
+                
+                # Rerun to show the conversation
+                st.rerun()
+                
+            except Exception as e:
+                st.error(f"Error starting conversation: {str(e)}")
+                st.session_state.ai_opener_generated = True  # Mark as attempted to avoid infinite loop
     
-    # Conversation area - always show input interface
-    # Display conversation history if it exists
-    if st.session_state.conversation_history:
+    # Display conversation history if it exists (but hide after survey completion)
+    if st.session_state.conversation_history and not st.session_state.survey_completed:
         display_conversation_history()
-        st.markdown("---")
+        # Only show divider if study is still active (followed by controls/debug sections)
+        if st.session_state.study_active:
+            st.markdown("---")
     
     # Debug sections for researchers - moved outside conversation area for better accessibility
-    participant_mode = st.query_params.get("participant", st.query_params.get("p", "false")).lower() == "true"
+    participant_mode = st.query_params.get("participant", st.query_params.get("p", "true")).lower() == "true"
     if not participant_mode:
         col1, col2 = st.columns(2)
         with col1:
@@ -1332,156 +1502,113 @@ def simple_user_study_interface() -> None:
         with col2:
             with st.expander("🔍 AI Agent Prompts (Debug)", expanded=False):
                 display_debug_prompts()
-        
-        st.markdown("---")
     
-    # Combined AI agent info and conversation input area
-    if not st.session_state.conversation_history:
-        # Show AI agent info and conversation starter
-        if st.session_state.agent_choice_1 in st.session_state.agent_dict:
-            ai_agent = st.session_state.agent_dict[st.session_state.agent_choice_1]
-            st.markdown("### 💬 **Start the Conversation**")
-            # Get dynamic occupation based on scenario
-            scenario_occupation = get_scenario_occupation(st.session_state.scenario_choice)
-            st.markdown(f"You will be conversing with an AI agent (**{scenario_occupation}**). Type your message below to begin.")
-        else:
-            st.markdown("### 💬 **Start the Conversation**")
-    else:
+    # Show conversation input area only if study is still active
+    if st.session_state.study_active:
         st.markdown("### 💬 **Your Response**")
-    
-    # Disable text input during AI response generation
-    placeholder_text = "AI is generating response..." if st.session_state.generating_response else "Type what you want to say..."
-    
-    human_input = st.text_area(
-        label="Your message", 
-        placeholder=placeholder_text,
-        height=100,
-        key=f"human_input_{st.session_state.turn_number}",
-        label_visibility="collapsed",
-        disabled=st.session_state.generating_response
-    )
-    
-    # Show buttons based on conversation state
-    if not st.session_state.conversation_history:
-        # Before conversation starts - only show Send Message button
-        button_text = "Generating..." if st.session_state.generating_response else "Send Message"
-        button_disabled = st.session_state.generating_response
         
-        # Show loading indicator if generating
-        if st.session_state.generating_response:
-            with st.spinner("AI is thinking..."):
-                st.empty()  # Placeholder for spinner
+        # Disable text input during AI response generation
+        placeholder_text = "AI is generating response..." if st.session_state.generating_response else "Type your response..."
         
-        # Check if we should be generating a response (state-based approach)
-        if st.session_state.get('pending_message_1'):
-            # We're in a state where we need to generate AI response
-            human_message = st.session_state.pending_message_1
-            st.session_state.pending_message_1 = None  # Clear the pending message
-            
-            # Start the conversation automatically on first message
-            st.session_state.study_active = True
-            st.session_state.turn_number = 0
-            
-            # Add human message to history
-            st.session_state.conversation_history.append({
-                'speaker': 'Human',
-                'content': human_message,
-                'action_type': 'speak'
-            })
-            
-            # Generate AI response
-            ai_response = simulate_ai_response(human_message)
-            ai_name = st.session_state.agent_dict[st.session_state.agent_choice_1].get('first_name', 'AI')
-            
-            st.session_state.conversation_history.append({
-                'speaker': ai_name,
-                'content': ai_response,
-                'action_type': 'speak'
-            })
-            
-            st.session_state.turn_number += 1
-            st.session_state.generating_response = False
-            st.rerun()
-        
-        if st.button(button_text, type="primary", use_container_width=True, disabled=button_disabled):
-            if human_input.strip():
-                # Set up for generation on next run
-                st.session_state.pending_message_1 = human_input.strip()
-                st.session_state.generating_response = True
-                st.rerun()
-            else:
-                st.error("Please enter a message")
+        human_input = st.text_area(
+            label="Your message", 
+            placeholder=placeholder_text,
+            height=100,
+            key=f"human_input_{st.session_state.turn_number}",
+            label_visibility="collapsed",
+            disabled=st.session_state.generating_response
+        )
     else:
-        # After conversation has started - show both buttons
+        # Study is not active (ended or AI left)
+        human_input = None
+    
+    # Show loading indicator if generating
+    if st.session_state.generating_response:
+        with st.spinner("AI is thinking..."):
+            st.empty()  # Placeholder for spinner
+    
+    # Check if we should be generating a response (state-based approach)
+    if st.session_state.get('pending_human_message'):
+        # We're in a state where we need to generate AI response
+        human_message = st.session_state.pending_human_message
+        st.session_state.pending_human_message = None  # Clear the pending message
         
-        # Show loading indicator if generating
-        if st.session_state.generating_response:
-            with st.spinner("AI is thinking..."):
-                st.empty()  # Placeholder for spinner
-        
-        # Check if we should be generating a response (state-based approach)
-        if st.session_state.get('pending_message_2'):
-            # We're in a state where we need to generate AI response
-            human_message = st.session_state.pending_message_2
-            st.session_state.pending_message_2 = None  # Clear the pending message
-            
-            # Check if we've reached max turns (each message = 1 turn)
-            if len(st.session_state.conversation_history) >= st.session_state.max_turns:
-                st.warning(f"Maximum conversation turns ({st.session_state.max_turns}) reached. Conversation will end.")
-                st.session_state.study_active = False
-                st.success("Conversation ended due to turn limit. Thank you for participating!")
-                st.session_state.generating_response = False
-                st.rerun()
-                return
-            
-            # Add human message to history
-            st.session_state.conversation_history.append({
-                'speaker': 'Human',
-                'content': human_message,
-                'action_type': 'speak'
-            })
-            
-            # Generate AI response
-            ai_response = simulate_ai_response(human_message)
-            ai_name = st.session_state.agent_dict[st.session_state.agent_choice_1].get('first_name', 'AI')
-            
-            st.session_state.conversation_history.append({
-                'speaker': ai_name,
-                'content': ai_response,
-                'action_type': 'speak'
-            })
-            
-            st.session_state.turn_number += 1
-            
-            # Check if we've now reached max turns after AI response
-            if len(st.session_state.conversation_history) >= st.session_state.max_turns:
-                st.session_state.study_active = False
-                # Note: Don't save here, wait for survey completion
-            
+        # Check if we've reached max turns (each message = 1 turn)
+        if len(st.session_state.conversation_history) >= st.session_state.max_turns:
+            st.warning(f"Maximum conversation turns ({st.session_state.max_turns}) reached. Conversation will end.")
+            st.session_state.study_active = False
+            st.success("Conversation ended due to turn limit. Thank you for participating!")
             st.session_state.generating_response = False
             st.rerun()
+            return
         
+        # Add human message to history
+        st.session_state.conversation_history.append({
+            'speaker': 'Human',
+            'content': human_message,
+            'action_type': 'speak'
+        })
+        
+        # Generate AI response
+        ai_response, ai_action_type = simulate_ai_response(human_message)
+        ai_name = st.session_state.agent_dict[st.session_state.agent_choice_1].get('first_name', 'AI')
+        
+        st.session_state.conversation_history.append({
+            'speaker': ai_name,
+            'content': ai_response,
+            'action_type': ai_action_type
+        })
+        
+        st.session_state.turn_number += 1
+        
+        # Check if AI agent decided to leave
+        if ai_action_type == "leave":
+            st.session_state.study_active = False
+            # Note: Don't save here, wait for survey completion
+            
+        # Check if we've now reached max turns after AI response
+        elif len(st.session_state.conversation_history) >= st.session_state.max_turns:
+            st.session_state.study_active = False
+            # Note: Don't save here, wait for survey completion
+        
+        st.session_state.generating_response = False
+        st.rerun()
+    
+    # Show conversation controls only if study is active
+    if st.session_state.study_active:
         col1, col2 = st.columns([1, 1])
         with col1:
-            button_text = "Generating..." if st.session_state.generating_response else "Send Message"
+            button_text = "Generating..." if st.session_state.generating_response else "Send Response"
             button_disabled = st.session_state.generating_response
             
             if st.button(button_text, type="primary", disabled=button_disabled):
-                if human_input.strip():
+                if human_input and human_input.strip():
                     # Set up for generation on next run
-                    st.session_state.pending_message_2 = human_input.strip()
+                    st.session_state.pending_human_message = human_input.strip()
                     st.session_state.generating_response = True
                     st.rerun()
                 else:
-                    st.error("Please enter a message")
+                    st.error("Please enter a response")
         
         with col2:
-            if st.button("End Conversation", type="secondary", disabled=st.session_state.generating_response):
+            # Disable "End Conversation" button on first turn (only AI opening message exists)
+            is_first_turn = len(st.session_state.conversation_history) <= 1
+            end_button_disabled = st.session_state.generating_response or is_first_turn
+            
+            button_help = "Please engage in at least one exchange before ending the conversation" if is_first_turn else None
+            if st.button("End Conversation", type="secondary", disabled=end_button_disabled, help=button_help):
+                # Add end message to conversation history
+                st.session_state.conversation_history.append({
+                    'speaker': 'System',
+                    'content': 'You have ended the conversation. Please proceed to the survey below.',
+                    'action_type': 'leave'
+                })
                 st.session_state.study_active = False
                 # Note: Don't save here, wait for survey completion
+                st.rerun()
     
-    # Show conversation stats
-    if st.session_state.conversation_history:
+    # Show conversation stats only if study is active
+    if st.session_state.conversation_history and st.session_state.study_active:
         st.markdown("---")
         turn_count = len(st.session_state.conversation_history)  # Each message = 1 turn
         st.markdown(f"**Conversation turns**: {turn_count}/{st.session_state.max_turns}")
@@ -1541,16 +1668,53 @@ def simple_user_study_interface() -> None:
                         st.error(f"Error saving survey results: {str(e)}")
         else:
             # Show completion confirmation after survey
-            participant_mode = st.query_params.get("participant", st.query_params.get("p", "false")).lower() == "true"
+            participant_mode = st.query_params.get("participant", st.query_params.get("p", "true")).lower() == "true"
             if participant_mode:
                 # Show Prolific ID for participants
                 prolific_pid = st.session_state.get('prolific_params', {}).get('PROLIFIC_PID')
                 if prolific_pid:
                     st.success("✅ Study completed successfully! Thank you for your participation.")
                     st.markdown(f"**Your Prolific ID:** `{prolific_pid}`")
-                    st.markdown("You may now close this window and return to Prolific to complete your submission.")
+                    st.markdown("---")
+                    st.markdown("### 🎯 **Complete Your Prolific Submission**")
+                    st.markdown("**Please click the button below to mark your submission as complete:**")
+                    
+                    # Create a prominent button/link for Prolific completion
+                    st.markdown("""
+                    <div style="text-align: center; margin: 20px 0;">
+                        <a href="https://app.prolific.com/submissions/complete?cc=CQM445IT" target="_blank" style="
+                            display: inline-block;
+                            background-color: #1f77b4;
+                            color: white;
+                            padding: 15px 30px;
+                            text-decoration: none;
+                            border-radius: 5px;
+                            font-weight: bold;
+                            font-size: 18px;
+                        ">🔗 Complete Prolific Submission</a>
+                    </div>
+                    """, unsafe_allow_html=True)
                 else:
                     st.success("✅ Study completed successfully! Thank you for your participation.")
+                    st.markdown("---")
+                    st.markdown("### 🎯 **Complete Your Prolific Submission**")
+                    st.markdown("**Please click the button below to mark your submission as complete:**")
+                    
+                    # Create a prominent button/link for Prolific completion
+                    st.markdown("""
+                    <div style="text-align: center; margin: 20px 0;">
+                        <a href="https://app.prolific.com/submissions/complete?cc=CQM445IT" target="_blank" style="
+                            display: inline-block;
+                            background-color: #1f77b4;
+                            color: white;
+                            padding: 15px 30px;
+                            text-decoration: none;
+                            border-radius: 5px;
+                            font-weight: bold;
+                            font-size: 18px;
+                        ">🔗 Complete Prolific Submission</a>
+                    </div>
+                    """, unsafe_allow_html=True)
             else:
                 # Show session ID for researchers
                 st.success("✅ Study completed and saved to database!")

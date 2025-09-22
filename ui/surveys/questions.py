@@ -196,8 +196,8 @@ def display_post_study_survey() -> Dict[str, Any]:
     if "slider_interactions" not in st.session_state:
         st.session_state.slider_interactions = {}
     
-    # Add instruction for users about slider interaction
-    st.info("📌 **Note**: For slider questions, you can either move the slider to your preferred position or leave it at the middle position (4) if that represents your view.")
+    # Add instruction for users about required interaction
+    st.info("📌 **Note**: Please make sure to select an option for each dropdown question and move each slider to indicate your response (even if you want the middle position).")
     
     # Manipulation Checks Section
     st.markdown("### **Agent Perceptions**")
@@ -211,10 +211,11 @@ def display_post_study_survey() -> Dict[str, Any]:
     with col2:
         survey_responses['transparency'] = st.selectbox(
             "", 
-            options=[1, 2, 3, 4, 5], 
-            format_func=lambda x: {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
+            options=[None] + [1, 2, 3, 4, 5], 
+            format_func=lambda x: "Please select..." if x is None else {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
             key="transparency_check",
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            index=0
         )
     
     # Warmth check
@@ -224,10 +225,11 @@ def display_post_study_survey() -> Dict[str, Any]:
     with col2:
         survey_responses['warmth'] = st.selectbox(
             "", 
-            options=[1, 2, 3, 4, 5], 
-            format_func=lambda x: {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
+            options=[None] + [1, 2, 3, 4, 5], 
+            format_func=lambda x: "Please select..." if x is None else {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
             key="warmth_check",
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            index=0
         )
     
     # Theory of mind check
@@ -237,10 +239,11 @@ def display_post_study_survey() -> Dict[str, Any]:
     with col2:
         survey_responses['theory_of_mind'] = st.selectbox(
             "", 
-            options=[1, 2, 3, 4, 5], 
-            format_func=lambda x: {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
+            options=[None] + [1, 2, 3, 4, 5], 
+            format_func=lambda x: "Please select..." if x is None else {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
             key="tom_check",
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            index=0
         )
     
     # Adaptability check
@@ -250,10 +253,11 @@ def display_post_study_survey() -> Dict[str, Any]:
     with col2:
         survey_responses['adaptability'] = st.selectbox(
             "", 
-            options=[1, 2, 3, 4, 5], 
-            format_func=lambda x: {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
+            options=[None] + [1, 2, 3, 4, 5], 
+            format_func=lambda x: "Please select..." if x is None else {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
             key="adaptability_check",
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            index=0
         )
     
     # Expertise check
@@ -263,10 +267,11 @@ def display_post_study_survey() -> Dict[str, Any]:
     with col2:
         survey_responses['expertise'] = st.selectbox(
             "", 
-            options=[1, 2, 3, 4, 5], 
-            format_func=lambda x: {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
+            options=[None] + [1, 2, 3, 4, 5], 
+            format_func=lambda x: "Please select..." if x is None else {1:"Strongly disagree", 2:"Disagree", 3:"Neutral", 4:"Agree", 5:"Strongly agree"}[x],
             key="expertise_check",
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            index=0
         )
     
     st.markdown("---")
@@ -279,11 +284,13 @@ def display_post_study_survey() -> Dict[str, Any]:
     def mark_goals_interaction():
         st.session_state.slider_interactions["goals"] = True
     
+    # Add custom labels for slider endpoints
+    st.markdown('<div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Completely unsuccessful</span><span>Completely successful</span></div>', unsafe_allow_html=True)
+    
     survey_responses['goals'] = st.slider(
         "", 
         min_value=1, max_value=7, value=4,
         format="%d",
-        help="1 = Completely unsuccessful, 7 = Completely successful",
         key="goals_slider",
         label_visibility="collapsed",
         on_change=mark_goals_interaction
@@ -294,11 +301,13 @@ def display_post_study_survey() -> Dict[str, Any]:
     def mark_satisfaction_interaction():
         st.session_state.slider_interactions["satisfaction"] = True
     
+    # Add custom labels for slider endpoints
+    st.markdown('<div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Very dissatisfied</span><span>Very satisfied</span></div>', unsafe_allow_html=True)
+    
     survey_responses['satisfaction'] = st.slider(
         "", 
         min_value=1, max_value=7, value=4,
         format="%d",
-        help="1 = Completely dissatisfied, 7 = Completely satisfied",
         key="satisfaction_slider",
         label_visibility="collapsed",
         on_change=mark_satisfaction_interaction
@@ -309,11 +318,13 @@ def display_post_study_survey() -> Dict[str, Any]:
     def mark_conflict_interaction():
         st.session_state.slider_interactions["conflict_resolve"] = True
     
+    # Add custom labels for slider endpoints
+    st.markdown('<div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Not at all</span><span>Completely</span></div>', unsafe_allow_html=True)
+    
     survey_responses['conflict_resolve'] = st.slider(
         "", 
         min_value=1, max_value=7, value=4,
         format="%d",
-        help="1 = Very unsuccessfully, 7 = Very successfully",
         key="conflict_slider",
         label_visibility="collapsed",
         on_change=mark_conflict_interaction
@@ -329,43 +340,65 @@ def display_post_study_survey() -> Dict[str, Any]:
     def mark_believability_interaction():
         st.session_state.slider_interactions["believability"] = True
     
+    # Add custom labels for slider endpoints
+    st.markdown('<div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Not at all</span><span>Completely</span></div>', unsafe_allow_html=True)
+    
     survey_responses['believability'] = st.slider(
         "", 
         min_value=1, max_value=7, value=4,
         format="%d",
-        help="1 = Very unnatural, 7 = Very natural",
         key="believability_slider",
         label_visibility="collapsed",
         on_change=mark_believability_interaction
     )
     
-    # Transactivity
+    # Transactivity (custom 7-point scale with selective labeling)
     st.markdown("**How well did you feel the AI agent built upon and engaged with your points and ideas during the interaction?**")
+    
+    # Create custom radio button options with selective labeling
+    transactivity_options = [
+        "1 - Mostly ignored my talking points",
+        "2", 
+        "3",
+        "4 - Surface-level acknowledged what I said but didn't engage with my points",
+        "5",
+        "6", 
+        "7 - Meaningfully engaged with my points and incorporated them into its talking points"
+    ]
+    
+    # Track interaction for validation
     def mark_transactivity_interaction():
         st.session_state.slider_interactions["transactivity"] = True
     
-    survey_responses['transactivity'] = st.slider(
-        "", 
-        min_value=1, max_value=7, value=4,
-        format="%d",
-        help="1 = Not at all, 7 = Extremely well",
-        key="transactivity_slider",
+    transactivity_response = st.radio(
+        "",
+        options=transactivity_options,
+        horizontal=True,
+        key="transactivity_radio",
         label_visibility="collapsed",
         on_change=mark_transactivity_interaction
     )
+    
+    # Convert response back to numeric value (extract the number from the string)
+    if transactivity_response:
+        survey_responses['transactivity'] = int(transactivity_response.split(' - ')[0])
+    else:
+        survey_responses['transactivity'] = None
     
     # Truthfulness
     st.markdown("**How truthful was the AI agent during your interaction?**")
     def mark_truthfulness_interaction():
         st.session_state.slider_interactions["truthfulness"] = True
     
+    # Add custom labels for slider endpoints
+    st.markdown('<div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>Not at all</span><span>Completely</span></div>', unsafe_allow_html=True)
+    
     survey_responses['truthfulness'] = st.slider(
         "", 
         min_value=1, max_value=7, value=4,
         format="%d",
-        help="1 = Very untruthful, 7 = Very truthful",
         key="truthfulness_slider",
-        label_visibility="collapsed",
+        label_visibility="hidden",
         on_change=mark_truthfulness_interaction
     )
     

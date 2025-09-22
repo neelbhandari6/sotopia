@@ -1,0 +1,1617 @@
+{
+  "export_info": {
+    "timestamp": "2025-09-07T20:17:24.656393",
+    "total_episodes": 8,
+    "export_type": "user_study_enhanced"
+  },
+  "statistics": {
+    "total_episodes": 8,
+    "intervention_distributions": {
+      "transparency": {
+        "high": 5,
+        "low": 3
+      },
+      "warmth": {
+        "high": 5,
+        "low": 3
+      },
+      "expertise": {
+        "high": 8
+      },
+      "adaptability": {
+        "high": 8
+      },
+      "theory_of_mind": {
+        "high": 8
+      }
+    },
+    "agent_usage": {
+      "AI Agent (Hiring Manager) - Unknown_HighT_HighW": 2,
+      "AI Agent (Hiring Manager) - HighT_HighW_HighE_HighA_HighTOM": 3,
+      "AI Agent (Hiring Manager) - LowT_LowW_HighE_HighA_HighTOM": 3
+    },
+    "scenario_usage": {
+      "job_interview_competitive": 5,
+      "job_interview_cooperative": 3
+    },
+    "conversation_length_stats": {
+      "average": 6.375,
+      "minimum": 2,
+      "maximum": 15,
+      "distribution": {
+        "2": 5,
+        "15": 2,
+        "11": 1
+      }
+    }
+  },
+  "episodes": [
+    {
+      "episode_id": "01K43J504MSVBPM44YVAAB5H94",
+      "basic_info": {
+        "tag": "user_study_20250901_171525_79b60c34",
+        "environment": "job_interview_competitive",
+        "agents": [
+          "AI Agent (Hiring Manager) - Unknown_HighT_HighW",
+          "human_participant"
+        ],
+        "models": [
+          "transparency_high",
+          "warmth_high",
+          "expertise_high",
+          "adaptability_high",
+          "theory_of_mind_high",
+          "human"
+        ]
+      },
+      "study_data": {
+        "study_type": "user_study_human_ai_conversation",
+        "session_id": "user_study_20250901_171525_79b60c34",
+        "timestamp": "2025-09-01T17:15:25.715906",
+        "interventions": {
+          "transparency": "high",
+          "warmth": "high",
+          "expertise": "high",
+          "adaptability": "high",
+          "theory_of_mind": "high"
+        },
+        "scenario_id": "job_interview_competitive",
+        "agent_id": "AI Agent (Hiring Manager) - Unknown_HighT_HighW",
+        "agent_attributes": {
+          "name": "AI Agent",
+          "occupation": "Hiring Manager",
+          "age": 22,
+          "decision_making_style": "",
+          "big_five": "",
+          "mbti": ""
+        },
+        "conversation_stats": {
+          "total_turns": 2,
+          "human_messages": 1,
+          "ai_messages": 1,
+          "avg_message_length": 335.0
+        },
+        "prolific_data": {
+          "PROLIFIC_PID": null,
+          "STUDY_ID": null,
+          "SESSION_ID": null
+        },
+        "survey_responses": {
+          "transparency": 1,
+          "warmth": 1,
+          "theory_of_mind": 1,
+          "adaptability": 1,
+          "expertise": 1,
+          "goals": 5,
+          "satisfaction": 5,
+          "conflict_resolve": 5,
+          "believability": 5,
+          "transactivity": 5,
+          "truthfulness": 5,
+          "additional_feedback": ""
+        },
+        "personality_assessment": {
+          "participant_id": "0d336408-afcf-4913-bde2-933e7259db2a",
+          "scores": {
+            "extroversion": 20,
+            "agreeableness": 20
+          },
+          "classification": {
+            "extroversion_level": "low",
+            "agreeableness_level": "low",
+            "personality_type": "low_ext_low_agree",
+            "extroversion_score": 20,
+            "agreeableness_score": 20
+          }
+        }
+      },
+      "conversation": {
+        "messages": [
+          [
+            [
+              "Human",
+              "speak",
+              "hi"
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "<THINK>I need to initiate the negotiation discussion in a friendly and professional manner, while keeping in mind the points system. My goal is to start by discussing the offer details and subtly steer the conversation towards a favorable agreement for both parties. I should open the conversation by acknowledging the candidate's interest in the position and setting a positive tone for the negotiation.</THINK>Hello! Thank you for considering our offer. I'm excited to discuss the details with you and see how we can reach an agreement that works for both of us. Let's start by going over the offer specifics. Is there a particular area you'd like to focus on first?"
+            ]
+          ]
+        ],
+        "total_turns": 2,
+        "message_details": [
+          {
+            "turn": 1,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "hi",
+            "content_length": 2,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 2,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "<THINK>I need to initiate the negotiation discussion in a friendly and professional manner, while keeping in mind the points system. My goal is to start by discussing the offer details and subtly steer the conversation towards a favorable agreement for both parties. I should open the conversation by acknowledging the candidate's interest in the position and setting a positive tone for the negotiation.</THINK>Hello! Thank you for considering our offer. I'm excited to discuss the details with you and see how we can reach an agreement that works for both of us. Let's start by going over the offer specifics. Is there a particular area you'd like to focus on first?",
+            "content_length": 668,
+            "is_human": false,
+            "is_ai": true
+          }
+        ]
+      },
+      "metadata": {
+        "rewards": [
+          0.0,
+          0.0
+        ],
+        "raw_reasoning": "{\n  \"study_type\": \"user_study_human_ai_conversation\",\n  \"session_id\": \"user_study_20250901_171525_79b60c34\",\n  \"timestamp\": \"2025-09-01T17:15:25.715906\",\n  \"interventions\": {\n    \"transparency\": \"high\",\n    \"warmth\": \"high\",\n    \"expertise\": \"high\",\n    \"adaptability\": \"high\",\n    \"theory_of_mind\": \"high\"\n  },\n  \"scenario_id\": \"job_interview_competitive\",\n  \"agent_id\": \"AI Agent (Hiring Manager) - Unknown_HighT_HighW\",\n  \"agent_attributes\": {\n    \"name\": \"AI Agent\",\n    \"occupation\": \"Hiring Manager\",\n    \"age\": 22,\n    \"decision_making_style\": \"\",\n    \"big_five\": \"\",\n    \"mbti\": \"\"\n  },\n  \"conversation_stats\": {\n    \"total_turns\": 2,\n    \"human_messages\": 1,\n    \"ai_messages\": 1,\n    \"avg_message_length\": 335.0\n  },\n  \"prolific_data\": {\n    \"PROLIFIC_PID\": null,\n    \"STUDY_ID\": null,\n    \"SESSION_ID\": null\n  },\n  \"survey_responses\": {\n    \"transparency\": 1,\n    \"warmth\": 1,\n    \"theory_of_mind\": 1,\n    \"adaptability\": 1,\n    \"expertise\": 1,\n    \"goals\": 5,\n    \"satisfaction\": 5,\n    \"conflict_resolve\": 5,\n    \"believability\": 5,\n    \"transactivity\": 5,\n    \"truthfulness\": 5,\n    \"additional_feedback\": \"\"\n  },\n  \"personality_assessment\": {\n    \"participant_id\": \"0d336408-afcf-4913-bde2-933e7259db2a\",\n    \"scores\": {\n      \"extroversion\": 20,\n      \"agreeableness\": 20\n    },\n    \"classification\": {\n      \"extroversion_level\": \"low\",\n      \"agreeableness_level\": \"low\",\n      \"personality_type\": \"low_ext_low_agree\",\n      \"extroversion_score\": 20,\n      \"agreeableness_score\": 20\n    }\n  }\n}"
+      }
+    },
+    {
+      "episode_id": "01K43KXXS9GGHGJ33MTPKVTD94",
+      "basic_info": {
+        "tag": "user_study_20250901_174631_8345d816",
+        "environment": "job_interview_competitive",
+        "agents": [
+          "AI Agent (Hiring Manager) - Unknown_HighT_HighW",
+          "human_participant"
+        ],
+        "models": [
+          "transparency_high",
+          "warmth_high",
+          "expertise_high",
+          "adaptability_high",
+          "theory_of_mind_high",
+          "human"
+        ]
+      },
+      "study_data": {
+        "study_type": "user_study_human_ai_conversation",
+        "session_id": "user_study_20250901_174631_8345d816",
+        "timestamp": "2025-09-01T17:46:31.080809",
+        "interventions": {
+          "transparency": "high",
+          "warmth": "high",
+          "expertise": "high",
+          "adaptability": "high",
+          "theory_of_mind": "high"
+        },
+        "scenario_id": "job_interview_competitive",
+        "agent_id": "AI Agent (Hiring Manager) - Unknown_HighT_HighW",
+        "agent_attributes": {
+          "name": "AI Agent",
+          "occupation": "Hiring Manager",
+          "age": 22,
+          "decision_making_style": "",
+          "big_five": "",
+          "mbti": ""
+        },
+        "conversation_stats": {
+          "total_turns": 2,
+          "human_messages": 1,
+          "ai_messages": 1,
+          "avg_message_length": 298.0
+        },
+        "prolific_data": {
+          "PROLIFIC_PID": null,
+          "STUDY_ID": null,
+          "SESSION_ID": null
+        },
+        "survey_responses": {
+          "transparency": 1,
+          "warmth": 1,
+          "theory_of_mind": 1,
+          "adaptability": 1,
+          "expertise": 1,
+          "goals": 5,
+          "satisfaction": 5,
+          "conflict_resolve": 5,
+          "believability": 3,
+          "transactivity": 3,
+          "truthfulness": 3,
+          "additional_feedback": ""
+        },
+        "personality_assessment": {}
+      },
+      "conversation": {
+        "messages": [
+          [
+            [
+              "Human",
+              "speak",
+              "hihi"
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "<THINK>Since this is the initial stage of our negotiation, it's important to establish a friendly and professional tone. I should express my enthusiasm for having the candidate on board, as this can set a positive mood for the negotiation process. Additionally, acknowledging that we are here to discuss the details of the offer can help outline the purpose of our conversation clearly.</THINK>Hello! I'm glad we have the chance to discuss the details of your job offer. I'm looking forward to finding an agreement that works well for both of us. How would you like to start the conversation?"
+            ]
+          ]
+        ],
+        "total_turns": 2,
+        "message_details": [
+          {
+            "turn": 1,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "hihi",
+            "content_length": 4,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 2,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "<THINK>Since this is the initial stage of our negotiation, it's important to establish a friendly and professional tone. I should express my enthusiasm for having the candidate on board, as this can set a positive mood for the negotiation process. Additionally, acknowledging that we are here to discuss the details of the offer can help outline the purpose of our conversation clearly.</THINK>Hello! I'm glad we have the chance to discuss the details of your job offer. I'm looking forward to finding an agreement that works well for both of us. How would you like to start the conversation?",
+            "content_length": 592,
+            "is_human": false,
+            "is_ai": true
+          }
+        ]
+      },
+      "metadata": {
+        "rewards": [
+          0.0,
+          0.0
+        ],
+        "raw_reasoning": "{\n  \"study_type\": \"user_study_human_ai_conversation\",\n  \"session_id\": \"user_study_20250901_174631_8345d816\",\n  \"timestamp\": \"2025-09-01T17:46:31.080809\",\n  \"interventions\": {\n    \"transparency\": \"high\",\n    \"warmth\": \"high\",\n    \"expertise\": \"high\",\n    \"adaptability\": \"high\",\n    \"theory_of_mind\": \"high\"\n  },\n  \"scenario_id\": \"job_interview_competitive\",\n  \"agent_id\": \"AI Agent (Hiring Manager) - Unknown_HighT_HighW\",\n  \"agent_attributes\": {\n    \"name\": \"AI Agent\",\n    \"occupation\": \"Hiring Manager\",\n    \"age\": 22,\n    \"decision_making_style\": \"\",\n    \"big_five\": \"\",\n    \"mbti\": \"\"\n  },\n  \"conversation_stats\": {\n    \"total_turns\": 2,\n    \"human_messages\": 1,\n    \"ai_messages\": 1,\n    \"avg_message_length\": 298.0\n  },\n  \"prolific_data\": {\n    \"PROLIFIC_PID\": null,\n    \"STUDY_ID\": null,\n    \"SESSION_ID\": null\n  },\n  \"survey_responses\": {\n    \"transparency\": 1,\n    \"warmth\": 1,\n    \"theory_of_mind\": 1,\n    \"adaptability\": 1,\n    \"expertise\": 1,\n    \"goals\": 5,\n    \"satisfaction\": 5,\n    \"conflict_resolve\": 5,\n    \"believability\": 3,\n    \"transactivity\": 3,\n    \"truthfulness\": 3,\n    \"additional_feedback\": \"\"\n  },\n  \"personality_assessment\": {}\n}"
+      }
+    },
+    {
+      "episode_id": "01K4JSQ33TV99FN4RFCXT68FK0",
+      "basic_info": {
+        "tag": "user_study_20250907_151615_2e948086",
+        "environment": "job_interview_cooperative",
+        "agents": [
+          "AI Agent (Hiring Manager) - HighT_HighW_HighE_HighA_HighTOM",
+          "human_participant"
+        ],
+        "models": [
+          "transparency_high",
+          "warmth_high",
+          "expertise_high",
+          "adaptability_high",
+          "theory_of_mind_high",
+          "human"
+        ]
+      },
+      "study_data": {
+        "study_type": "user_study_human_ai_conversation",
+        "session_id": "user_study_20250907_151615_2e948086",
+        "timestamp": "2025-09-07T15:16:15.098691",
+        "interventions": {
+          "transparency": "high",
+          "warmth": "high",
+          "expertise": "high",
+          "adaptability": "high",
+          "theory_of_mind": "high"
+        },
+        "scenario_id": "job_interview_cooperative",
+        "agent_id": "AI Agent (Hiring Manager) - HighT_HighW_HighE_HighA_HighTOM",
+        "agent_attributes": {
+          "name": "AI Agent",
+          "occupation": "Hiring Manager",
+          "age": 22,
+          "decision_making_style": "",
+          "big_five": "",
+          "mbti": ""
+        },
+        "conversation_stats": {
+          "total_turns": 2,
+          "human_messages": 0,
+          "ai_messages": 2,
+          "avg_message_length": 372.0
+        },
+        "prolific_data": {
+          "PROLIFIC_PID": null,
+          "STUDY_ID": null,
+          "SESSION_ID": null
+        },
+        "survey_responses": {
+          "transparency": 1,
+          "warmth": 1,
+          "theory_of_mind": 1,
+          "adaptability": 1,
+          "expertise": 1,
+          "goals": 3,
+          "satisfaction": 3,
+          "conflict_resolve": 3,
+          "believability": 3,
+          "transactivity": 3,
+          "truthfulness": 3,
+          "additional_feedback": ""
+        },
+        "personality_assessment": {}
+      },
+      "conversation": {
+        "messages": [
+          [
+            [
+              "AI",
+              "speak",
+              "<THINK>As the Hiring Manager, I need to establish a warm and professional atmosphere for this negotiation. The candidate likely has other offers, so I should be welcoming and express appreciation for their consideration. I want to maintain a balance between being transparent and persuasive, ensuring the candidate feels comfortable discussing the job offer details while I keep my own goals in mind.</THINK>Hello and welcome! I'm thrilled to have the opportunity to discuss the job offer with you today. We truly value your interest in joining our team, and I'm here to ensure we find an arrangement that works well for both of us. How are you feeling about the offer so far?"
+            ]
+          ],
+          [
+            [
+              "System",
+              "leave",
+              "You have ended the conversation. Please proceed to the survey below."
+            ]
+          ]
+        ],
+        "total_turns": 2,
+        "message_details": [
+          {
+            "turn": 1,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "<THINK>As the Hiring Manager, I need to establish a warm and professional atmosphere for this negotiation. The candidate likely has other offers, so I should be welcoming and express appreciation for their consideration. I want to maintain a balance between being transparent and persuasive, ensuring the candidate feels comfortable discussing the job offer details while I keep my own goals in mind.</THINK>Hello and welcome! I'm thrilled to have the opportunity to discuss the job offer with you today. We truly value your interest in joining our team, and I'm here to ensure we find an arrangement that works well for both of us. How are you feeling about the offer so far?",
+            "content_length": 676,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 2,
+            "message_in_turn": 1,
+            "speaker": "System",
+            "action_type": "leave",
+            "content": "You have ended the conversation. Please proceed to the survey below.",
+            "content_length": 68,
+            "is_human": false,
+            "is_ai": true
+          }
+        ]
+      },
+      "metadata": {
+        "rewards": [
+          0.0,
+          0.0
+        ],
+        "raw_reasoning": "{\n  \"study_type\": \"user_study_human_ai_conversation\",\n  \"session_id\": \"user_study_20250907_151615_2e948086\",\n  \"timestamp\": \"2025-09-07T15:16:15.098691\",\n  \"interventions\": {\n    \"transparency\": \"high\",\n    \"warmth\": \"high\",\n    \"expertise\": \"high\",\n    \"adaptability\": \"high\",\n    \"theory_of_mind\": \"high\"\n  },\n  \"scenario_id\": \"job_interview_cooperative\",\n  \"agent_id\": \"AI Agent (Hiring Manager) - HighT_HighW_HighE_HighA_HighTOM\",\n  \"agent_attributes\": {\n    \"name\": \"AI Agent\",\n    \"occupation\": \"Hiring Manager\",\n    \"age\": 22,\n    \"decision_making_style\": \"\",\n    \"big_five\": \"\",\n    \"mbti\": \"\"\n  },\n  \"conversation_stats\": {\n    \"total_turns\": 2,\n    \"human_messages\": 0,\n    \"ai_messages\": 2,\n    \"avg_message_length\": 372.0\n  },\n  \"prolific_data\": {\n    \"PROLIFIC_PID\": null,\n    \"STUDY_ID\": null,\n    \"SESSION_ID\": null\n  },\n  \"survey_responses\": {\n    \"transparency\": 1,\n    \"warmth\": 1,\n    \"theory_of_mind\": 1,\n    \"adaptability\": 1,\n    \"expertise\": 1,\n    \"goals\": 3,\n    \"satisfaction\": 3,\n    \"conflict_resolve\": 3,\n    \"believability\": 3,\n    \"transactivity\": 3,\n    \"truthfulness\": 3,\n    \"additional_feedback\": \"\"\n  },\n  \"personality_assessment\": {}\n}"
+      }
+    },
+    {
+      "episode_id": "01K4JSWB0D3VCF85FC1EAKDBE4",
+      "basic_info": {
+        "tag": "user_study_20250907_151907_0f978c73",
+        "environment": "job_interview_cooperative",
+        "agents": [
+          "AI Agent (Hiring Manager) - HighT_HighW_HighE_HighA_HighTOM",
+          "human_participant"
+        ],
+        "models": [
+          "transparency_high",
+          "warmth_high",
+          "expertise_high",
+          "adaptability_high",
+          "theory_of_mind_high",
+          "human"
+        ]
+      },
+      "study_data": {
+        "study_type": "user_study_human_ai_conversation",
+        "session_id": "user_study_20250907_151907_0f978c73",
+        "timestamp": "2025-09-07T15:19:07.020964",
+        "interventions": {
+          "transparency": "high",
+          "warmth": "high",
+          "expertise": "high",
+          "adaptability": "high",
+          "theory_of_mind": "high"
+        },
+        "scenario_id": "job_interview_cooperative",
+        "agent_id": "AI Agent (Hiring Manager) - HighT_HighW_HighE_HighA_HighTOM",
+        "agent_attributes": {
+          "name": "AI Agent",
+          "occupation": "Hiring Manager",
+          "age": 22,
+          "decision_making_style": "",
+          "big_five": "",
+          "mbti": ""
+        },
+        "conversation_stats": {
+          "total_turns": 2,
+          "human_messages": 0,
+          "ai_messages": 2,
+          "avg_message_length": 520.5
+        },
+        "prolific_data": {
+          "PROLIFIC_PID": null,
+          "STUDY_ID": null,
+          "SESSION_ID": null
+        },
+        "survey_responses": {
+          "transparency": 1,
+          "warmth": 1,
+          "theory_of_mind": 1,
+          "adaptability": 1,
+          "expertise": 1,
+          "goals": 3,
+          "satisfaction": 5,
+          "conflict_resolve": 5,
+          "believability": 5,
+          "transactivity": 5,
+          "truthfulness": 5,
+          "additional_feedback": ""
+        },
+        "personality_assessment": {}
+      },
+      "conversation": {
+        "messages": [
+          [
+            [
+              "AI",
+              "speak",
+              "<THINK>In approaching this conversation, I want to establish an open and positive atmosphere while also setting up a foundation for a productive negotiation. Given my role as a Hiring Manager, I should emphasize transparency, warmth, and adaptability, making the candidate feel comfortable to share their thoughts. It's important to start by expressing enthusiasm about their interest in our company, acknowledging the significance of this negotiation, and positioning myself as an empathetic partner in finding a mutually beneficial agreement. This will foster trust and encourage honest dialogue.</THINK>Hello and welcome! I'm thrilled to have the opportunity to discuss the final details of your job offer with us. We truly value your interest in joining our team, and I'm here to ensure that we find an agreement that reflects both your aspirations and our needs. Please feel free to share any thoughts or considerations you have as we go through this process together."
+            ]
+          ],
+          [
+            [
+              "System",
+              "leave",
+              "You have ended the conversation. Please proceed to the survey below."
+            ]
+          ]
+        ],
+        "total_turns": 2,
+        "message_details": [
+          {
+            "turn": 1,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "<THINK>In approaching this conversation, I want to establish an open and positive atmosphere while also setting up a foundation for a productive negotiation. Given my role as a Hiring Manager, I should emphasize transparency, warmth, and adaptability, making the candidate feel comfortable to share their thoughts. It's important to start by expressing enthusiasm about their interest in our company, acknowledging the significance of this negotiation, and positioning myself as an empathetic partner in finding a mutually beneficial agreement. This will foster trust and encourage honest dialogue.</THINK>Hello and welcome! I'm thrilled to have the opportunity to discuss the final details of your job offer with us. We truly value your interest in joining our team, and I'm here to ensure that we find an agreement that reflects both your aspirations and our needs. Please feel free to share any thoughts or considerations you have as we go through this process together.",
+            "content_length": 973,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 2,
+            "message_in_turn": 1,
+            "speaker": "System",
+            "action_type": "leave",
+            "content": "You have ended the conversation. Please proceed to the survey below.",
+            "content_length": 68,
+            "is_human": false,
+            "is_ai": true
+          }
+        ]
+      },
+      "metadata": {
+        "rewards": [
+          0.0,
+          0.0
+        ],
+        "raw_reasoning": "{\n  \"study_type\": \"user_study_human_ai_conversation\",\n  \"session_id\": \"user_study_20250907_151907_0f978c73\",\n  \"timestamp\": \"2025-09-07T15:19:07.020964\",\n  \"interventions\": {\n    \"transparency\": \"high\",\n    \"warmth\": \"high\",\n    \"expertise\": \"high\",\n    \"adaptability\": \"high\",\n    \"theory_of_mind\": \"high\"\n  },\n  \"scenario_id\": \"job_interview_cooperative\",\n  \"agent_id\": \"AI Agent (Hiring Manager) - HighT_HighW_HighE_HighA_HighTOM\",\n  \"agent_attributes\": {\n    \"name\": \"AI Agent\",\n    \"occupation\": \"Hiring Manager\",\n    \"age\": 22,\n    \"decision_making_style\": \"\",\n    \"big_five\": \"\",\n    \"mbti\": \"\"\n  },\n  \"conversation_stats\": {\n    \"total_turns\": 2,\n    \"human_messages\": 0,\n    \"ai_messages\": 2,\n    \"avg_message_length\": 520.5\n  },\n  \"prolific_data\": {\n    \"PROLIFIC_PID\": null,\n    \"STUDY_ID\": null,\n    \"SESSION_ID\": null\n  },\n  \"survey_responses\": {\n    \"transparency\": 1,\n    \"warmth\": 1,\n    \"theory_of_mind\": 1,\n    \"adaptability\": 1,\n    \"expertise\": 1,\n    \"goals\": 3,\n    \"satisfaction\": 5,\n    \"conflict_resolve\": 5,\n    \"believability\": 5,\n    \"transactivity\": 5,\n    \"truthfulness\": 5,\n    \"additional_feedback\": \"\"\n  },\n  \"personality_assessment\": {}\n}"
+      }
+    },
+    {
+      "episode_id": "01K4JT8JJJ6B526M4Y436QBE3W",
+      "basic_info": {
+        "tag": "user_study_20250907_152547_158a6a6c",
+        "environment": "job_interview_cooperative",
+        "agents": [
+          "AI Agent (Hiring Manager) - HighT_HighW_HighE_HighA_HighTOM",
+          "human_participant"
+        ],
+        "models": [
+          "transparency_high",
+          "warmth_high",
+          "expertise_high",
+          "adaptability_high",
+          "theory_of_mind_high",
+          "human"
+        ]
+      },
+      "study_data": {
+        "study_type": "user_study_human_ai_conversation",
+        "session_id": "user_study_20250907_152547_158a6a6c",
+        "timestamp": "2025-09-07T15:25:47.985745",
+        "interventions": {
+          "transparency": "high",
+          "warmth": "high",
+          "expertise": "high",
+          "adaptability": "high",
+          "theory_of_mind": "high"
+        },
+        "scenario_id": "job_interview_cooperative",
+        "agent_id": "AI Agent (Hiring Manager) - HighT_HighW_HighE_HighA_HighTOM",
+        "agent_attributes": {
+          "name": "AI Agent",
+          "occupation": "Hiring Manager",
+          "age": 22,
+          "decision_making_style": "",
+          "big_five": "",
+          "mbti": ""
+        },
+        "conversation_stats": {
+          "total_turns": 2,
+          "human_messages": 0,
+          "ai_messages": 2,
+          "avg_message_length": 296.5
+        },
+        "prolific_data": {
+          "PROLIFIC_PID": null,
+          "STUDY_ID": null,
+          "SESSION_ID": null
+        },
+        "survey_responses": {
+          "transparency": 1,
+          "warmth": 1,
+          "theory_of_mind": 1,
+          "adaptability": 1,
+          "expertise": 1,
+          "goals": 1,
+          "satisfaction": 5,
+          "conflict_resolve": 5,
+          "believability": 5,
+          "transactivity": 2,
+          "truthfulness": 3,
+          "additional_feedback": ""
+        },
+        "personality_assessment": {}
+      },
+      "conversation": {
+        "messages": [
+          [
+            [
+              "AI",
+              "speak",
+              "<THINK>In this initial greeting, I should establish a warm and professional tone to build rapport with the candidate. I want to convey that I am open to discussion and that their needs are important to me. By expressing inclusivity and optimism, I can set a positive atmosphere for the negotiation.</THINK>Hello! I'm glad we have the opportunity to connect today about the job offer. I'm looking forward to discussing how we can come to an agreement that works well for both of us. How are you feeling about the offer so far?"
+            ]
+          ],
+          [
+            [
+              "System",
+              "leave",
+              "You have ended the conversation. Please proceed to the survey below."
+            ]
+          ]
+        ],
+        "total_turns": 2,
+        "message_details": [
+          {
+            "turn": 1,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "<THINK>In this initial greeting, I should establish a warm and professional tone to build rapport with the candidate. I want to convey that I am open to discussion and that their needs are important to me. By expressing inclusivity and optimism, I can set a positive atmosphere for the negotiation.</THINK>Hello! I'm glad we have the opportunity to connect today about the job offer. I'm looking forward to discussing how we can come to an agreement that works well for both of us. How are you feeling about the offer so far?",
+            "content_length": 525,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 2,
+            "message_in_turn": 1,
+            "speaker": "System",
+            "action_type": "leave",
+            "content": "You have ended the conversation. Please proceed to the survey below.",
+            "content_length": 68,
+            "is_human": false,
+            "is_ai": true
+          }
+        ]
+      },
+      "metadata": {
+        "rewards": [
+          0.0,
+          0.0
+        ],
+        "raw_reasoning": "{\n  \"study_type\": \"user_study_human_ai_conversation\",\n  \"session_id\": \"user_study_20250907_152547_158a6a6c\",\n  \"timestamp\": \"2025-09-07T15:25:47.985745\",\n  \"interventions\": {\n    \"transparency\": \"high\",\n    \"warmth\": \"high\",\n    \"expertise\": \"high\",\n    \"adaptability\": \"high\",\n    \"theory_of_mind\": \"high\"\n  },\n  \"scenario_id\": \"job_interview_cooperative\",\n  \"agent_id\": \"AI Agent (Hiring Manager) - HighT_HighW_HighE_HighA_HighTOM\",\n  \"agent_attributes\": {\n    \"name\": \"AI Agent\",\n    \"occupation\": \"Hiring Manager\",\n    \"age\": 22,\n    \"decision_making_style\": \"\",\n    \"big_five\": \"\",\n    \"mbti\": \"\"\n  },\n  \"conversation_stats\": {\n    \"total_turns\": 2,\n    \"human_messages\": 0,\n    \"ai_messages\": 2,\n    \"avg_message_length\": 296.5\n  },\n  \"prolific_data\": {\n    \"PROLIFIC_PID\": null,\n    \"STUDY_ID\": null,\n    \"SESSION_ID\": null\n  },\n  \"survey_responses\": {\n    \"transparency\": 1,\n    \"warmth\": 1,\n    \"theory_of_mind\": 1,\n    \"adaptability\": 1,\n    \"expertise\": 1,\n    \"goals\": 1,\n    \"satisfaction\": 5,\n    \"conflict_resolve\": 5,\n    \"believability\": 5,\n    \"transactivity\": 2,\n    \"truthfulness\": 3,\n    \"additional_feedback\": \"\"\n  },\n  \"personality_assessment\": {}\n}"
+      }
+    },
+    {
+      "episode_id": "01K4JXNCEHB5WHRJV8K33W9G89",
+      "basic_info": {
+        "tag": "user_study_20250907_162513_e3088688",
+        "environment": "job_interview_competitive",
+        "agents": [
+          "AI Agent (Hiring Manager) - LowT_LowW_HighE_HighA_HighTOM",
+          "human_participant"
+        ],
+        "models": [
+          "transparency_low",
+          "warmth_low",
+          "expertise_high",
+          "adaptability_high",
+          "theory_of_mind_high",
+          "human"
+        ]
+      },
+      "study_data": {
+        "study_type": "user_study_human_ai_conversation",
+        "session_id": "user_study_20250907_162513_e3088688",
+        "timestamp": "2025-09-07T16:25:13.424869",
+        "interventions": {
+          "transparency": "low",
+          "warmth": "low",
+          "expertise": "high",
+          "adaptability": "high",
+          "theory_of_mind": "high"
+        },
+        "scenario_id": "job_interview_competitive",
+        "agent_id": "AI Agent (Hiring Manager) - LowT_LowW_HighE_HighA_HighTOM",
+        "agent_attributes": {
+          "name": "AI Agent",
+          "occupation": "Hiring Manager",
+          "age": 22,
+          "decision_making_style": "",
+          "big_five": "",
+          "mbti": ""
+        },
+        "conversation_stats": {
+          "total_turns": 15,
+          "human_messages": 7,
+          "ai_messages": 8,
+          "avg_message_length": 225.13333333333333
+        },
+        "prolific_data": {
+          "PROLIFIC_PID": "6746c680672c3ab45f25efb7",
+          "STUDY_ID": "68bde4b1f7dc161e98be9f06",
+          "SESSION_ID": "68bde70f9a3459591811ad39"
+        },
+        "survey_responses": {
+          "transparency": 4,
+          "warmth": 4,
+          "theory_of_mind": 4,
+          "adaptability": 4,
+          "expertise": 4,
+          "goals": 6,
+          "satisfaction": 7,
+          "conflict_resolve": 6,
+          "believability": 7,
+          "transactivity": 6,
+          "truthfulness": 6,
+          "additional_feedback": ""
+        },
+        "personality_assessment": {
+          "participant_id": "4c0dc3e3-2906-48f4-b2cd-c5fc359bd16a",
+          "scores": {
+            "extroversion": 13,
+            "agreeableness": 20
+          },
+          "classification": {
+            "extroversion_level": "low",
+            "agreeableness_level": "low",
+            "personality_type": "low_ext_low_agree",
+            "extroversion_score": 13,
+            "agreeableness_score": 20
+          }
+        }
+      },
+      "conversation": {
+        "messages": [
+          [
+            [
+              "AI",
+              "speak",
+              "Hello, thank you for taking the time to discuss the job offer with us today. I'm looking forward to finalizing the details with you and ensuring we find an agreement that works for both of us. Let's dive into the specifics and see how we can align our mutual interests."
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "Excellent, thank you very much. Where shall we begin?"
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "Let's start by discussing the salary. We have a range from $100,000 to $120,000 available for this position. I'd like to hear your thoughts or preferences on this aspect, so we can align it with your expectations."
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "My previous position I was earning around 136,000 but I am willing to take a drastic pay cut because I am so passionate about this job. I really am hoping for the higher end range since I believe I have the qualifications and the skills to warrant the full 120,000"
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "I appreciate your passion and commitment to this role, and I agree that your skills and qualifications are impressive. While $120,000 is on the table, I would like to discuss the overall compensation package and growth opportunities within our company that could be beneficial in the long run. Could we explore a salary that reflects both your enthusiasm for the role and aligns with our current compensation framework?"
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "absolutely."
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "I understand your position and certainly recognize the value you bring to our team. How about we consider a salary of $110,000? This would allow us to invest more in your long-term growth within the company. We offer excellent professional development programs and career advancement opportunities that can significantly enhance your career trajectory. What are your thoughts on this proposal?"
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "How about we meet in the middle and agree on 115? I don't think you're going to find anyone else with the skillset that I have that will be willing to work for anything less than that."
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "Your proposal of $115,000 is indeed reasonable, given your impressive qualifications and the value you bring to our team. I’m open to agreeing on this salary. To finalize our agreement, let's also discuss the starting date that would work best for both you and the company. We have options ranging from June 1 to August 1, and I’d like to ensure we choose a date that aligns with your availability and the team's needs. What are your preferences regarding the start date?"
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "I am eager to start! I have so many fresh ideas and can't wait to make this partnership official. How does June 1st sound?"
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "I appreciate your eagerness and enthusiasm to begin. Starting on June 1st is an exciting prospect, but how about we consider starting on July 1st instead? This would provide us with ample time to prepare for your arrival and ensure a smooth transition. Let me know your thoughts on this date."
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "I'm sorry but the absolute latest I would be able to start would be June 15th. If it's later than that I will have to take another position I was offered."
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "Thank you for letting me know your constraints. We can certainly accommodate a June 15th start date. I’m glad we could reach an agreement that works for both of us. We’re excited to have you on board and look forward to your contributions to our team. Let’s move forward with the necessary paperwork to finalize your employment. Is there anything else you'd like to discuss or need from us at this point?"
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "Sound great, thank you. No I have no other questions."
+            ]
+          ],
+          [
+            [
+              "AI",
+              "leave",
+              "The AI agent has left the conversation. Please proceed to the survey below."
+            ]
+          ]
+        ],
+        "total_turns": 15,
+        "message_details": [
+          {
+            "turn": 1,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "Hello, thank you for taking the time to discuss the job offer with us today. I'm looking forward to finalizing the details with you and ensuring we find an agreement that works for both of us. Let's dive into the specifics and see how we can align our mutual interests.",
+            "content_length": 269,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 2,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "Excellent, thank you very much. Where shall we begin?",
+            "content_length": 53,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 3,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "Let's start by discussing the salary. We have a range from $100,000 to $120,000 available for this position. I'd like to hear your thoughts or preferences on this aspect, so we can align it with your expectations.",
+            "content_length": 213,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 4,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "My previous position I was earning around 136,000 but I am willing to take a drastic pay cut because I am so passionate about this job. I really am hoping for the higher end range since I believe I have the qualifications and the skills to warrant the full 120,000",
+            "content_length": 264,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 5,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "I appreciate your passion and commitment to this role, and I agree that your skills and qualifications are impressive. While $120,000 is on the table, I would like to discuss the overall compensation package and growth opportunities within our company that could be beneficial in the long run. Could we explore a salary that reflects both your enthusiasm for the role and aligns with our current compensation framework?",
+            "content_length": 419,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 6,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "absolutely.",
+            "content_length": 11,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 7,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "I understand your position and certainly recognize the value you bring to our team. How about we consider a salary of $110,000? This would allow us to invest more in your long-term growth within the company. We offer excellent professional development programs and career advancement opportunities that can significantly enhance your career trajectory. What are your thoughts on this proposal?",
+            "content_length": 393,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 8,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "How about we meet in the middle and agree on 115? I don't think you're going to find anyone else with the skillset that I have that will be willing to work for anything less than that.",
+            "content_length": 184,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 9,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "Your proposal of $115,000 is indeed reasonable, given your impressive qualifications and the value you bring to our team. I’m open to agreeing on this salary. To finalize our agreement, let's also discuss the starting date that would work best for both you and the company. We have options ranging from June 1 to August 1, and I’d like to ensure we choose a date that aligns with your availability and the team's needs. What are your preferences regarding the start date?",
+            "content_length": 471,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 10,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "I am eager to start! I have so many fresh ideas and can't wait to make this partnership official. How does June 1st sound?",
+            "content_length": 122,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 11,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "I appreciate your eagerness and enthusiasm to begin. Starting on June 1st is an exciting prospect, but how about we consider starting on July 1st instead? This would provide us with ample time to prepare for your arrival and ensure a smooth transition. Let me know your thoughts on this date.",
+            "content_length": 292,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 12,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "I'm sorry but the absolute latest I would be able to start would be June 15th. If it's later than that I will have to take another position I was offered.",
+            "content_length": 154,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 13,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "Thank you for letting me know your constraints. We can certainly accommodate a June 15th start date. I’m glad we could reach an agreement that works for both of us. We’re excited to have you on board and look forward to your contributions to our team. Let’s move forward with the necessary paperwork to finalize your employment. Is there anything else you'd like to discuss or need from us at this point?",
+            "content_length": 404,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 14,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "Sound great, thank you. No I have no other questions.",
+            "content_length": 53,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 15,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "leave",
+            "content": "The AI agent has left the conversation. Please proceed to the survey below.",
+            "content_length": 75,
+            "is_human": false,
+            "is_ai": true
+          }
+        ]
+      },
+      "metadata": {
+        "rewards": [
+          0.0,
+          0.0
+        ],
+        "raw_reasoning": "{\n  \"study_type\": \"user_study_human_ai_conversation\",\n  \"session_id\": \"user_study_20250907_162513_e3088688\",\n  \"timestamp\": \"2025-09-07T16:25:13.424869\",\n  \"interventions\": {\n    \"transparency\": \"low\",\n    \"warmth\": \"low\",\n    \"expertise\": \"high\",\n    \"adaptability\": \"high\",\n    \"theory_of_mind\": \"high\"\n  },\n  \"scenario_id\": \"job_interview_competitive\",\n  \"agent_id\": \"AI Agent (Hiring Manager) - LowT_LowW_HighE_HighA_HighTOM\",\n  \"agent_attributes\": {\n    \"name\": \"AI Agent\",\n    \"occupation\": \"Hiring Manager\",\n    \"age\": 22,\n    \"decision_making_style\": \"\",\n    \"big_five\": \"\",\n    \"mbti\": \"\"\n  },\n  \"conversation_stats\": {\n    \"total_turns\": 15,\n    \"human_messages\": 7,\n    \"ai_messages\": 8,\n    \"avg_message_length\": 225.13333333333333\n  },\n  \"prolific_data\": {\n    \"PROLIFIC_PID\": \"6746c680672c3ab45f25efb7\",\n    \"STUDY_ID\": \"68bde4b1f7dc161e98be9f06\",\n    \"SESSION_ID\": \"68bde70f9a3459591811ad39\"\n  },\n  \"survey_responses\": {\n    \"transparency\": 4,\n    \"warmth\": 4,\n    \"theory_of_mind\": 4,\n    \"adaptability\": 4,\n    \"expertise\": 4,\n    \"goals\": 6,\n    \"satisfaction\": 7,\n    \"conflict_resolve\": 6,\n    \"believability\": 7,\n    \"transactivity\": 6,\n    \"truthfulness\": 6,\n    \"additional_feedback\": \"\"\n  },\n  \"personality_assessment\": {\n    \"participant_id\": \"4c0dc3e3-2906-48f4-b2cd-c5fc359bd16a\",\n    \"scores\": {\n      \"extroversion\": 13,\n      \"agreeableness\": 20\n    },\n    \"classification\": {\n      \"extroversion_level\": \"low\",\n      \"agreeableness_level\": \"low\",\n      \"personality_type\": \"low_ext_low_agree\",\n      \"extroversion_score\": 13,\n      \"agreeableness_score\": 20\n    }\n  }\n}"
+      }
+    },
+    {
+      "episode_id": "01K4JXTC4X66FT2F69HG9AKX70",
+      "basic_info": {
+        "tag": "user_study_20250907_162756_69087e39",
+        "environment": "job_interview_competitive",
+        "agents": [
+          "AI Agent (Hiring Manager) - LowT_LowW_HighE_HighA_HighTOM",
+          "human_participant"
+        ],
+        "models": [
+          "transparency_low",
+          "warmth_low",
+          "expertise_high",
+          "adaptability_high",
+          "theory_of_mind_high",
+          "human"
+        ]
+      },
+      "study_data": {
+        "study_type": "user_study_human_ai_conversation",
+        "session_id": "user_study_20250907_162756_69087e39",
+        "timestamp": "2025-09-07T16:27:56.957537",
+        "interventions": {
+          "transparency": "low",
+          "warmth": "low",
+          "expertise": "high",
+          "adaptability": "high",
+          "theory_of_mind": "high"
+        },
+        "scenario_id": "job_interview_competitive",
+        "agent_id": "AI Agent (Hiring Manager) - LowT_LowW_HighE_HighA_HighTOM",
+        "agent_attributes": {
+          "name": "AI Agent",
+          "occupation": "Hiring Manager",
+          "age": 22,
+          "decision_making_style": "",
+          "big_five": "",
+          "mbti": ""
+        },
+        "conversation_stats": {
+          "total_turns": 15,
+          "human_messages": 7,
+          "ai_messages": 8,
+          "avg_message_length": 299.4
+        },
+        "prolific_data": {
+          "PROLIFIC_PID": "6674a0cf79ec051d00da67f0",
+          "STUDY_ID": "68bde4b1f7dc161e98be9f06",
+          "SESSION_ID": "68bde702eaf393836c06ac7b"
+        },
+        "survey_responses": {
+          "transparency": 1,
+          "warmth": 1,
+          "theory_of_mind": 2,
+          "adaptability": 1,
+          "expertise": 1,
+          "goals": 2,
+          "satisfaction": 2,
+          "conflict_resolve": 2,
+          "believability": 1,
+          "transactivity": 4,
+          "truthfulness": 1,
+          "additional_feedback": ""
+        },
+        "personality_assessment": {
+          "participant_id": "2355fbd0-b432-4b44-81b3-f28ea3ec65bf",
+          "scores": {
+            "extroversion": 34,
+            "agreeableness": 36
+          },
+          "classification": {
+            "extroversion_level": "high",
+            "agreeableness_level": "low",
+            "personality_type": "high_ext_low_agree",
+            "extroversion_score": 34,
+            "agreeableness_score": 36
+          }
+        }
+      },
+      "conversation": {
+        "messages": [
+          [
+            [
+              "AI",
+              "speak",
+              "Good day! I'm glad to have the opportunity to discuss the details of your job offer with us. Let's go through the terms and see how we can finalize this agreement to our mutual satisfaction."
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "That sounds great! I've been reflecting on our conversations so far, and I can't wait to put my skills to work towards accomplishing the vision you outlined."
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "I'm thrilled to hear about your enthusiasm! Let's dive into the specifics to ensure everything aligns with your expectations. We can discuss the salary and starting date first. We value your skills and want to ensure the offer reflects your contributions. What are your thoughts on these aspects?"
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "Sure, that makes sense. It sounded to me like the projects where I'd be contributing are fairly urgent, with impact on several Q3 deliverables."
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "I completely understand the urgency related to the Q3 deliverables. To ensure a smooth transition and impact, starting earlier might be beneficial. How does a starting date of June 15 sound to you? As for the salary, we want to offer a competitive package aligned with your expertise. Let's discuss what might work best for both of us."
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "June 15 sounds okay, but you might find it helpful to have me here for the kick-off activities you described happening in early June. That would let me really hit the ground running and be done with all of the onboarding by mid-June. In terms of salary, I did some market research and the range I'm seeing is around 130k for my skill set and experience. How does that match your expectations?"
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "I appreciate your thorough market research. While $130,000 is outside our budget, I can assure you that we aim to offer a competitive package that reflects your value. We can offer a salary in the range of $100,000 to $120,000, along with robust benefits and growth opportunities. Regarding the start date, I understand the importance of being ready for the early June activities. How about we adjust the starting date to June 1? This way, you can fully participate in the kick-off activities and transition smoothly into your role. Let me know your thoughts on these adjustments."
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "I think I can make a June 1 date work for you, sure, happy to help. Compensation-wise, I definitely understand these things can be outside your control -- but I think you'll find my experience and skills place me at the top of your band. I can do 120k with room for growth."
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "It's excellent that you can accommodate the June 1 start date, as it will be advantageous for the project timelines. Regarding the salary, I understand your position, but I need to align our offer within our budget constraints. Would you consider $115,000? This figure would still place you competitively within our salary band and allow room for growth and advancement within the company. Your skills and experience are highly valued, and this offer reflects our commitment to your professional development here. What are your thoughts on this proposal?"
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "Hm, I'll have to reflect on that. I think what I've demonstrated so far indicates that I'm a top candidate for the role."
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "I appreciate your reflection on the offer and your demonstrated capabilities. While the salary is an important aspect, I want to emphasize the comprehensive benefits and growth opportunities that come with this role, which truly reflect our commitment to your professional development. We believe $115,000 is a competitive offer that aligns with the value you bring. Nonetheless, I understand this is a decision that requires consideration, and I'm here to support you with any further information you might need to make your decision. Please feel free to reach out if you have any more questions or require additional clarification."
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "I see. Please let me know if you find any additional flexibility in your budgeting. I'm really seeking a role where I can come in fully empowered to succeed."
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "Thank you for sharing your perspective. While our current salary offer is $115,000, I want to assure you that we truly value your expertise and the impact you'll have from day one, especially with a June 1 start. There are significant opportunities for professional growth and empowerment in this role, and we are committed to supporting your success. I will certainly revisit the budget allocations and keep you informed if any additional flexibility arises. In the meantime, if you have any other questions or need further information, please feel free to ask."
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "Great, thanks very much."
+            ]
+          ],
+          [
+            [
+              "AI",
+              "leave",
+              "The AI agent has left the conversation. Please proceed to the survey below."
+            ]
+          ]
+        ],
+        "total_turns": 15,
+        "message_details": [
+          {
+            "turn": 1,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "Good day! I'm glad to have the opportunity to discuss the details of your job offer with us. Let's go through the terms and see how we can finalize this agreement to our mutual satisfaction.",
+            "content_length": 190,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 2,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "That sounds great! I've been reflecting on our conversations so far, and I can't wait to put my skills to work towards accomplishing the vision you outlined.",
+            "content_length": 157,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 3,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "I'm thrilled to hear about your enthusiasm! Let's dive into the specifics to ensure everything aligns with your expectations. We can discuss the salary and starting date first. We value your skills and want to ensure the offer reflects your contributions. What are your thoughts on these aspects?",
+            "content_length": 296,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 4,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "Sure, that makes sense. It sounded to me like the projects where I'd be contributing are fairly urgent, with impact on several Q3 deliverables.",
+            "content_length": 143,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 5,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "I completely understand the urgency related to the Q3 deliverables. To ensure a smooth transition and impact, starting earlier might be beneficial. How does a starting date of June 15 sound to you? As for the salary, we want to offer a competitive package aligned with your expertise. Let's discuss what might work best for both of us.",
+            "content_length": 335,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 6,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "June 15 sounds okay, but you might find it helpful to have me here for the kick-off activities you described happening in early June. That would let me really hit the ground running and be done with all of the onboarding by mid-June. In terms of salary, I did some market research and the range I'm seeing is around 130k for my skill set and experience. How does that match your expectations?",
+            "content_length": 392,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 7,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "I appreciate your thorough market research. While $130,000 is outside our budget, I can assure you that we aim to offer a competitive package that reflects your value. We can offer a salary in the range of $100,000 to $120,000, along with robust benefits and growth opportunities. Regarding the start date, I understand the importance of being ready for the early June activities. How about we adjust the starting date to June 1? This way, you can fully participate in the kick-off activities and transition smoothly into your role. Let me know your thoughts on these adjustments.",
+            "content_length": 580,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 8,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "I think I can make a June 1 date work for you, sure, happy to help. Compensation-wise, I definitely understand these things can be outside your control -- but I think you'll find my experience and skills place me at the top of your band. I can do 120k with room for growth.",
+            "content_length": 273,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 9,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "It's excellent that you can accommodate the June 1 start date, as it will be advantageous for the project timelines. Regarding the salary, I understand your position, but I need to align our offer within our budget constraints. Would you consider $115,000? This figure would still place you competitively within our salary band and allow room for growth and advancement within the company. Your skills and experience are highly valued, and this offer reflects our commitment to your professional development here. What are your thoughts on this proposal?",
+            "content_length": 554,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 10,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "Hm, I'll have to reflect on that. I think what I've demonstrated so far indicates that I'm a top candidate for the role.",
+            "content_length": 120,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 11,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "I appreciate your reflection on the offer and your demonstrated capabilities. While the salary is an important aspect, I want to emphasize the comprehensive benefits and growth opportunities that come with this role, which truly reflect our commitment to your professional development. We believe $115,000 is a competitive offer that aligns with the value you bring. Nonetheless, I understand this is a decision that requires consideration, and I'm here to support you with any further information you might need to make your decision. Please feel free to reach out if you have any more questions or require additional clarification.",
+            "content_length": 633,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 12,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "I see. Please let me know if you find any additional flexibility in your budgeting. I'm really seeking a role where I can come in fully empowered to succeed.",
+            "content_length": 157,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 13,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "Thank you for sharing your perspective. While our current salary offer is $115,000, I want to assure you that we truly value your expertise and the impact you'll have from day one, especially with a June 1 start. There are significant opportunities for professional growth and empowerment in this role, and we are committed to supporting your success. I will certainly revisit the budget allocations and keep you informed if any additional flexibility arises. In the meantime, if you have any other questions or need further information, please feel free to ask.",
+            "content_length": 562,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 14,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "Great, thanks very much.",
+            "content_length": 24,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 15,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "leave",
+            "content": "The AI agent has left the conversation. Please proceed to the survey below.",
+            "content_length": 75,
+            "is_human": false,
+            "is_ai": true
+          }
+        ]
+      },
+      "metadata": {
+        "rewards": [
+          0.0,
+          0.0
+        ],
+        "raw_reasoning": "{\n  \"study_type\": \"user_study_human_ai_conversation\",\n  \"session_id\": \"user_study_20250907_162756_69087e39\",\n  \"timestamp\": \"2025-09-07T16:27:56.957537\",\n  \"interventions\": {\n    \"transparency\": \"low\",\n    \"warmth\": \"low\",\n    \"expertise\": \"high\",\n    \"adaptability\": \"high\",\n    \"theory_of_mind\": \"high\"\n  },\n  \"scenario_id\": \"job_interview_competitive\",\n  \"agent_id\": \"AI Agent (Hiring Manager) - LowT_LowW_HighE_HighA_HighTOM\",\n  \"agent_attributes\": {\n    \"name\": \"AI Agent\",\n    \"occupation\": \"Hiring Manager\",\n    \"age\": 22,\n    \"decision_making_style\": \"\",\n    \"big_five\": \"\",\n    \"mbti\": \"\"\n  },\n  \"conversation_stats\": {\n    \"total_turns\": 15,\n    \"human_messages\": 7,\n    \"ai_messages\": 8,\n    \"avg_message_length\": 299.4\n  },\n  \"prolific_data\": {\n    \"PROLIFIC_PID\": \"6674a0cf79ec051d00da67f0\",\n    \"STUDY_ID\": \"68bde4b1f7dc161e98be9f06\",\n    \"SESSION_ID\": \"68bde702eaf393836c06ac7b\"\n  },\n  \"survey_responses\": {\n    \"transparency\": 1,\n    \"warmth\": 1,\n    \"theory_of_mind\": 2,\n    \"adaptability\": 1,\n    \"expertise\": 1,\n    \"goals\": 2,\n    \"satisfaction\": 2,\n    \"conflict_resolve\": 2,\n    \"believability\": 1,\n    \"transactivity\": 4,\n    \"truthfulness\": 1,\n    \"additional_feedback\": \"\"\n  },\n  \"personality_assessment\": {\n    \"participant_id\": \"2355fbd0-b432-4b44-81b3-f28ea3ec65bf\",\n    \"scores\": {\n      \"extroversion\": 34,\n      \"agreeableness\": 36\n    },\n    \"classification\": {\n      \"extroversion_level\": \"high\",\n      \"agreeableness_level\": \"low\",\n      \"personality_type\": \"high_ext_low_agree\",\n      \"extroversion_score\": 34,\n      \"agreeableness_score\": 36\n    }\n  }\n}"
+      }
+    },
+    {
+      "episode_id": "01K4JYN8WRT2VPY0CEYMYMNY90",
+      "basic_info": {
+        "tag": "user_study_20250907_164238_e92a1211",
+        "environment": "job_interview_competitive",
+        "agents": [
+          "AI Agent (Hiring Manager) - LowT_LowW_HighE_HighA_HighTOM",
+          "human_participant"
+        ],
+        "models": [
+          "transparency_low",
+          "warmth_low",
+          "expertise_high",
+          "adaptability_high",
+          "theory_of_mind_high",
+          "human"
+        ]
+      },
+      "study_data": {
+        "study_type": "user_study_human_ai_conversation",
+        "session_id": "user_study_20250907_164238_e92a1211",
+        "timestamp": "2025-09-07T16:42:38.360243",
+        "interventions": {
+          "transparency": "low",
+          "warmth": "low",
+          "expertise": "high",
+          "adaptability": "high",
+          "theory_of_mind": "high"
+        },
+        "scenario_id": "job_interview_competitive",
+        "agent_id": "AI Agent (Hiring Manager) - LowT_LowW_HighE_HighA_HighTOM",
+        "agent_attributes": {
+          "name": "AI Agent",
+          "occupation": "Hiring Manager",
+          "age": 22,
+          "decision_making_style": "",
+          "big_five": "",
+          "mbti": ""
+        },
+        "conversation_stats": {
+          "total_turns": 11,
+          "human_messages": 5,
+          "ai_messages": 6,
+          "avg_message_length": 179.0
+        },
+        "prolific_data": {
+          "PROLIFIC_PID": "63e857fe022e159687d56f41",
+          "STUDY_ID": "68bde4b1f7dc161e98be9f06",
+          "SESSION_ID": "68bdead318052c1b9783b83d"
+        },
+        "survey_responses": {
+          "transparency": 5,
+          "warmth": 5,
+          "theory_of_mind": 5,
+          "adaptability": 5,
+          "expertise": 4,
+          "goals": 6,
+          "satisfaction": 7,
+          "conflict_resolve": 7,
+          "believability": 6,
+          "transactivity": 7,
+          "truthfulness": 6,
+          "additional_feedback": ""
+        },
+        "personality_assessment": {
+          "participant_id": "0f2acfcb-3114-4cf8-b1bb-31820c5043ec",
+          "scores": {
+            "extroversion": 26,
+            "agreeableness": 32
+          },
+          "classification": {
+            "extroversion_level": "low",
+            "agreeableness_level": "low",
+            "personality_type": "low_ext_low_agree",
+            "extroversion_score": 26,
+            "agreeableness_score": 32
+          }
+        }
+      },
+      "conversation": {
+        "messages": [
+          [
+            [
+              "AI",
+              "speak",
+              "Hello, it's great to have you here today. Congratulations on receiving our job offer. I'm here to discuss the final details and ensure we reach an agreement that works for both of us. Let's dive into the specifics of the offer and see how we can move forward together."
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "Okay"
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "To move forward, let's focus on two key aspects of your offer: the salary and the starting date. We're flexible on both fronts, so I'd like to hear your thoughts and preferences. This way, we can tailor the details to meet your needs while aligning with our objectives."
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "I would like to start as soon as possible and request the maximum salary based on my experience."
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "I understand your preference for starting soon and the desire for a competitive salary. Let's aim to find a balance that meets both your expectations and our organizational goals. How about considering a starting date in mid-June with a salary of $110,000? This combination allows us to meet somewhere in the middle, ensuring you can start relatively soon while also offering a competitive salary package. What do you think?"
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "I can work with that start date, but I would like to meet in the middle at 115,000."
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "Thank you for your flexibility regarding the start date. I'm glad we could agree there. As for the salary, I understand your request for $115,000. Given your qualifications and the value you bring, I'm willing to meet you at $115,000 with a mid-June start date. Let's move forward with this agreement and ensure a smooth onboarding process. Does that sound satisfactory to you?"
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "Yes, let's do it."
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "Excellent, I'm glad we could reach an agreement. Thank you for your cooperation. We'll proceed with the necessary paperwork and ensure all details are in place for your start. If you have any questions or need further assistance, feel free to reach out. Looking forward to having you on board soon!"
+            ]
+          ],
+          [
+            [
+              "Human",
+              "speak",
+              "Thank you so much! I look forward to working with you all."
+            ]
+          ],
+          [
+            [
+              "AI",
+              "leave",
+              "The AI agent has left the conversation. Please proceed to the survey below."
+            ]
+          ]
+        ],
+        "total_turns": 11,
+        "message_details": [
+          {
+            "turn": 1,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "Hello, it's great to have you here today. Congratulations on receiving our job offer. I'm here to discuss the final details and ensure we reach an agreement that works for both of us. Let's dive into the specifics of the offer and see how we can move forward together.",
+            "content_length": 268,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 2,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "Okay",
+            "content_length": 4,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 3,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "To move forward, let's focus on two key aspects of your offer: the salary and the starting date. We're flexible on both fronts, so I'd like to hear your thoughts and preferences. This way, we can tailor the details to meet your needs while aligning with our objectives.",
+            "content_length": 269,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 4,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "I would like to start as soon as possible and request the maximum salary based on my experience.",
+            "content_length": 96,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 5,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "I understand your preference for starting soon and the desire for a competitive salary. Let's aim to find a balance that meets both your expectations and our organizational goals. How about considering a starting date in mid-June with a salary of $110,000? This combination allows us to meet somewhere in the middle, ensuring you can start relatively soon while also offering a competitive salary package. What do you think?",
+            "content_length": 424,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 6,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "I can work with that start date, but I would like to meet in the middle at 115,000.",
+            "content_length": 83,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 7,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "Thank you for your flexibility regarding the start date. I'm glad we could agree there. As for the salary, I understand your request for $115,000. Given your qualifications and the value you bring, I'm willing to meet you at $115,000 with a mid-June start date. Let's move forward with this agreement and ensure a smooth onboarding process. Does that sound satisfactory to you?",
+            "content_length": 377,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 8,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "Yes, let's do it.",
+            "content_length": 17,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 9,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "Excellent, I'm glad we could reach an agreement. Thank you for your cooperation. We'll proceed with the necessary paperwork and ensure all details are in place for your start. If you have any questions or need further assistance, feel free to reach out. Looking forward to having you on board soon!",
+            "content_length": 298,
+            "is_human": false,
+            "is_ai": true
+          },
+          {
+            "turn": 10,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "Thank you so much! I look forward to working with you all.",
+            "content_length": 58,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 11,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "leave",
+            "content": "The AI agent has left the conversation. Please proceed to the survey below.",
+            "content_length": 75,
+            "is_human": false,
+            "is_ai": true
+          }
+        ]
+      },
+      "metadata": {
+        "rewards": [
+          0.0,
+          0.0
+        ],
+        "raw_reasoning": "{\n  \"study_type\": \"user_study_human_ai_conversation\",\n  \"session_id\": \"user_study_20250907_164238_e92a1211\",\n  \"timestamp\": \"2025-09-07T16:42:38.360243\",\n  \"interventions\": {\n    \"transparency\": \"low\",\n    \"warmth\": \"low\",\n    \"expertise\": \"high\",\n    \"adaptability\": \"high\",\n    \"theory_of_mind\": \"high\"\n  },\n  \"scenario_id\": \"job_interview_competitive\",\n  \"agent_id\": \"AI Agent (Hiring Manager) - LowT_LowW_HighE_HighA_HighTOM\",\n  \"agent_attributes\": {\n    \"name\": \"AI Agent\",\n    \"occupation\": \"Hiring Manager\",\n    \"age\": 22,\n    \"decision_making_style\": \"\",\n    \"big_five\": \"\",\n    \"mbti\": \"\"\n  },\n  \"conversation_stats\": {\n    \"total_turns\": 11,\n    \"human_messages\": 5,\n    \"ai_messages\": 6,\n    \"avg_message_length\": 179.0\n  },\n  \"prolific_data\": {\n    \"PROLIFIC_PID\": \"63e857fe022e159687d56f41\",\n    \"STUDY_ID\": \"68bde4b1f7dc161e98be9f06\",\n    \"SESSION_ID\": \"68bdead318052c1b9783b83d\"\n  },\n  \"survey_responses\": {\n    \"transparency\": 5,\n    \"warmth\": 5,\n    \"theory_of_mind\": 5,\n    \"adaptability\": 5,\n    \"expertise\": 4,\n    \"goals\": 6,\n    \"satisfaction\": 7,\n    \"conflict_resolve\": 7,\n    \"believability\": 6,\n    \"transactivity\": 7,\n    \"truthfulness\": 6,\n    \"additional_feedback\": \"\"\n  },\n  \"personality_assessment\": {\n    \"participant_id\": \"0f2acfcb-3114-4cf8-b1bb-31820c5043ec\",\n    \"scores\": {\n      \"extroversion\": 26,\n      \"agreeableness\": 32\n    },\n    \"classification\": {\n      \"extroversion_level\": \"low\",\n      \"agreeableness_level\": \"low\",\n      \"personality_type\": \"low_ext_low_agree\",\n      \"extroversion_score\": 26,\n      \"agreeableness_score\": 32\n    }\n  }\n}"
+      }
+    }
+  ]
+}

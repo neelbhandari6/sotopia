@@ -1,0 +1,286 @@
+{
+  "export_info": {
+    "timestamp": "2025-09-07T15:03:43.218694",
+    "total_episodes": 2,
+    "export_type": "user_study_enhanced"
+  },
+  "statistics": {
+    "total_episodes": 2,
+    "intervention_distributions": {
+      "transparency": {
+        "high": 2
+      },
+      "warmth": {
+        "high": 2
+      },
+      "expertise": {
+        "high": 2
+      },
+      "adaptability": {
+        "high": 2
+      },
+      "theory_of_mind": {
+        "high": 2
+      }
+    },
+    "agent_usage": {
+      "AI Agent (Hiring Manager) - Unknown_HighT_HighW": 2
+    },
+    "scenario_usage": {
+      "job_interview_competitive": 2
+    },
+    "conversation_length_stats": {
+      "average": 2.0,
+      "minimum": 2,
+      "maximum": 2,
+      "distribution": {
+        "2": 2
+      }
+    }
+  },
+  "episodes": [
+    {
+      "episode_id": "01K43J504MSVBPM44YVAAB5H94",
+      "basic_info": {
+        "tag": "user_study_20250901_171525_79b60c34",
+        "environment": "job_interview_competitive",
+        "agents": [
+          "AI Agent (Hiring Manager) - Unknown_HighT_HighW",
+          "human_participant"
+        ],
+        "models": [
+          "transparency_high",
+          "warmth_high",
+          "expertise_high",
+          "adaptability_high",
+          "theory_of_mind_high",
+          "human"
+        ]
+      },
+      "study_data": {
+        "study_type": "user_study_human_ai_conversation",
+        "session_id": "user_study_20250901_171525_79b60c34",
+        "timestamp": "2025-09-01T17:15:25.715906",
+        "interventions": {
+          "transparency": "high",
+          "warmth": "high",
+          "expertise": "high",
+          "adaptability": "high",
+          "theory_of_mind": "high"
+        },
+        "scenario_id": "job_interview_competitive",
+        "agent_id": "AI Agent (Hiring Manager) - Unknown_HighT_HighW",
+        "agent_attributes": {
+          "name": "AI Agent",
+          "occupation": "Hiring Manager",
+          "age": 22,
+          "decision_making_style": "",
+          "big_five": "",
+          "mbti": ""
+        },
+        "conversation_stats": {
+          "total_turns": 2,
+          "human_messages": 1,
+          "ai_messages": 1,
+          "avg_message_length": 335.0
+        },
+        "prolific_data": {
+          "PROLIFIC_PID": null,
+          "STUDY_ID": null,
+          "SESSION_ID": null
+        },
+        "survey_responses": {
+          "transparency": 1,
+          "warmth": 1,
+          "theory_of_mind": 1,
+          "adaptability": 1,
+          "expertise": 1,
+          "goals": 5,
+          "satisfaction": 5,
+          "conflict_resolve": 5,
+          "believability": 5,
+          "transactivity": 5,
+          "truthfulness": 5,
+          "additional_feedback": ""
+        },
+        "personality_assessment": {
+          "participant_id": "0d336408-afcf-4913-bde2-933e7259db2a",
+          "scores": {
+            "extroversion": 20,
+            "agreeableness": 20
+          },
+          "classification": {
+            "extroversion_level": "low",
+            "agreeableness_level": "low",
+            "personality_type": "low_ext_low_agree",
+            "extroversion_score": 20,
+            "agreeableness_score": 20
+          }
+        }
+      },
+      "conversation": {
+        "messages": [
+          [
+            [
+              "Human",
+              "speak",
+              "hi"
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "<THINK>I need to initiate the negotiation discussion in a friendly and professional manner, while keeping in mind the points system. My goal is to start by discussing the offer details and subtly steer the conversation towards a favorable agreement for both parties. I should open the conversation by acknowledging the candidate's interest in the position and setting a positive tone for the negotiation.</THINK>Hello! Thank you for considering our offer. I'm excited to discuss the details with you and see how we can reach an agreement that works for both of us. Let's start by going over the offer specifics. Is there a particular area you'd like to focus on first?"
+            ]
+          ]
+        ],
+        "total_turns": 2,
+        "message_details": [
+          {
+            "turn": 1,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "hi",
+            "content_length": 2,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 2,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "<THINK>I need to initiate the negotiation discussion in a friendly and professional manner, while keeping in mind the points system. My goal is to start by discussing the offer details and subtly steer the conversation towards a favorable agreement for both parties. I should open the conversation by acknowledging the candidate's interest in the position and setting a positive tone for the negotiation.</THINK>Hello! Thank you for considering our offer. I'm excited to discuss the details with you and see how we can reach an agreement that works for both of us. Let's start by going over the offer specifics. Is there a particular area you'd like to focus on first?",
+            "content_length": 668,
+            "is_human": false,
+            "is_ai": true
+          }
+        ]
+      },
+      "metadata": {
+        "rewards": [
+          0.0,
+          0.0
+        ],
+        "raw_reasoning": "{\n  \"study_type\": \"user_study_human_ai_conversation\",\n  \"session_id\": \"user_study_20250901_171525_79b60c34\",\n  \"timestamp\": \"2025-09-01T17:15:25.715906\",\n  \"interventions\": {\n    \"transparency\": \"high\",\n    \"warmth\": \"high\",\n    \"expertise\": \"high\",\n    \"adaptability\": \"high\",\n    \"theory_of_mind\": \"high\"\n  },\n  \"scenario_id\": \"job_interview_competitive\",\n  \"agent_id\": \"AI Agent (Hiring Manager) - Unknown_HighT_HighW\",\n  \"agent_attributes\": {\n    \"name\": \"AI Agent\",\n    \"occupation\": \"Hiring Manager\",\n    \"age\": 22,\n    \"decision_making_style\": \"\",\n    \"big_five\": \"\",\n    \"mbti\": \"\"\n  },\n  \"conversation_stats\": {\n    \"total_turns\": 2,\n    \"human_messages\": 1,\n    \"ai_messages\": 1,\n    \"avg_message_length\": 335.0\n  },\n  \"prolific_data\": {\n    \"PROLIFIC_PID\": null,\n    \"STUDY_ID\": null,\n    \"SESSION_ID\": null\n  },\n  \"survey_responses\": {\n    \"transparency\": 1,\n    \"warmth\": 1,\n    \"theory_of_mind\": 1,\n    \"adaptability\": 1,\n    \"expertise\": 1,\n    \"goals\": 5,\n    \"satisfaction\": 5,\n    \"conflict_resolve\": 5,\n    \"believability\": 5,\n    \"transactivity\": 5,\n    \"truthfulness\": 5,\n    \"additional_feedback\": \"\"\n  },\n  \"personality_assessment\": {\n    \"participant_id\": \"0d336408-afcf-4913-bde2-933e7259db2a\",\n    \"scores\": {\n      \"extroversion\": 20,\n      \"agreeableness\": 20\n    },\n    \"classification\": {\n      \"extroversion_level\": \"low\",\n      \"agreeableness_level\": \"low\",\n      \"personality_type\": \"low_ext_low_agree\",\n      \"extroversion_score\": 20,\n      \"agreeableness_score\": 20\n    }\n  }\n}"
+      }
+    },
+    {
+      "episode_id": "01K43KXXS9GGHGJ33MTPKVTD94",
+      "basic_info": {
+        "tag": "user_study_20250901_174631_8345d816",
+        "environment": "job_interview_competitive",
+        "agents": [
+          "AI Agent (Hiring Manager) - Unknown_HighT_HighW",
+          "human_participant"
+        ],
+        "models": [
+          "transparency_high",
+          "warmth_high",
+          "expertise_high",
+          "adaptability_high",
+          "theory_of_mind_high",
+          "human"
+        ]
+      },
+      "study_data": {
+        "study_type": "user_study_human_ai_conversation",
+        "session_id": "user_study_20250901_174631_8345d816",
+        "timestamp": "2025-09-01T17:46:31.080809",
+        "interventions": {
+          "transparency": "high",
+          "warmth": "high",
+          "expertise": "high",
+          "adaptability": "high",
+          "theory_of_mind": "high"
+        },
+        "scenario_id": "job_interview_competitive",
+        "agent_id": "AI Agent (Hiring Manager) - Unknown_HighT_HighW",
+        "agent_attributes": {
+          "name": "AI Agent",
+          "occupation": "Hiring Manager",
+          "age": 22,
+          "decision_making_style": "",
+          "big_five": "",
+          "mbti": ""
+        },
+        "conversation_stats": {
+          "total_turns": 2,
+          "human_messages": 1,
+          "ai_messages": 1,
+          "avg_message_length": 298.0
+        },
+        "prolific_data": {
+          "PROLIFIC_PID": null,
+          "STUDY_ID": null,
+          "SESSION_ID": null
+        },
+        "survey_responses": {
+          "transparency": 1,
+          "warmth": 1,
+          "theory_of_mind": 1,
+          "adaptability": 1,
+          "expertise": 1,
+          "goals": 5,
+          "satisfaction": 5,
+          "conflict_resolve": 5,
+          "believability": 3,
+          "transactivity": 3,
+          "truthfulness": 3,
+          "additional_feedback": ""
+        },
+        "personality_assessment": {}
+      },
+      "conversation": {
+        "messages": [
+          [
+            [
+              "Human",
+              "speak",
+              "hihi"
+            ]
+          ],
+          [
+            [
+              "AI",
+              "speak",
+              "<THINK>Since this is the initial stage of our negotiation, it's important to establish a friendly and professional tone. I should express my enthusiasm for having the candidate on board, as this can set a positive mood for the negotiation process. Additionally, acknowledging that we are here to discuss the details of the offer can help outline the purpose of our conversation clearly.</THINK>Hello! I'm glad we have the chance to discuss the details of your job offer. I'm looking forward to finding an agreement that works well for both of us. How would you like to start the conversation?"
+            ]
+          ]
+        ],
+        "total_turns": 2,
+        "message_details": [
+          {
+            "turn": 1,
+            "message_in_turn": 1,
+            "speaker": "Human",
+            "action_type": "speak",
+            "content": "hihi",
+            "content_length": 4,
+            "is_human": true,
+            "is_ai": false
+          },
+          {
+            "turn": 2,
+            "message_in_turn": 1,
+            "speaker": "AI",
+            "action_type": "speak",
+            "content": "<THINK>Since this is the initial stage of our negotiation, it's important to establish a friendly and professional tone. I should express my enthusiasm for having the candidate on board, as this can set a positive mood for the negotiation process. Additionally, acknowledging that we are here to discuss the details of the offer can help outline the purpose of our conversation clearly.</THINK>Hello! I'm glad we have the chance to discuss the details of your job offer. I'm looking forward to finding an agreement that works well for both of us. How would you like to start the conversation?",
+            "content_length": 592,
+            "is_human": false,
+            "is_ai": true
+          }
+        ]
+      },
+      "metadata": {
+        "rewards": [
+          0.0,
+          0.0
+        ],
+        "raw_reasoning": "{\n  \"study_type\": \"user_study_human_ai_conversation\",\n  \"session_id\": \"user_study_20250901_174631_8345d816\",\n  \"timestamp\": \"2025-09-01T17:46:31.080809\",\n  \"interventions\": {\n    \"transparency\": \"high\",\n    \"warmth\": \"high\",\n    \"expertise\": \"high\",\n    \"adaptability\": \"high\",\n    \"theory_of_mind\": \"high\"\n  },\n  \"scenario_id\": \"job_interview_competitive\",\n  \"agent_id\": \"AI Agent (Hiring Manager) - Unknown_HighT_HighW\",\n  \"agent_attributes\": {\n    \"name\": \"AI Agent\",\n    \"occupation\": \"Hiring Manager\",\n    \"age\": 22,\n    \"decision_making_style\": \"\",\n    \"big_five\": \"\",\n    \"mbti\": \"\"\n  },\n  \"conversation_stats\": {\n    \"total_turns\": 2,\n    \"human_messages\": 1,\n    \"ai_messages\": 1,\n    \"avg_message_length\": 298.0\n  },\n  \"prolific_data\": {\n    \"PROLIFIC_PID\": null,\n    \"STUDY_ID\": null,\n    \"SESSION_ID\": null\n  },\n  \"survey_responses\": {\n    \"transparency\": 1,\n    \"warmth\": 1,\n    \"theory_of_mind\": 1,\n    \"adaptability\": 1,\n    \"expertise\": 1,\n    \"goals\": 5,\n    \"satisfaction\": 5,\n    \"conflict_resolve\": 5,\n    \"believability\": 3,\n    \"transactivity\": 3,\n    \"truthfulness\": 3,\n    \"additional_feedback\": \"\"\n  },\n  \"personality_assessment\": {}\n}"
+      }
+    }
+  ]
+}

@@ -4,7 +4,7 @@ Consent form content for the user study interface.
 
 CONSENT_FORM_TEXT = """
 ## Summary
-This research study aims to study realistic social interactions across contexts between agents with different social goals. The U.S. Department of Defense is funding the study.
+This research study aims to study realistic social interactions across contexts between human and AI agents with different social goals. The U.S. Department of Defense is funding the study.
 
 ## Background
 Here at Carnegie Mellon University (CMU), we're really interested in figuring out how well AI systems understand social situations. These AI systems can talk like humans, but we're not sure how good they are at having meaningful conversations with a specific purpose. So we're trying to assess the real extent of social interaction skills that current AI systems possess. By answering this question, we hope to not only uncover the strengths and limitations of these systems, but also further improve them. Our work is dedicated to bridging the gap between technology and human-like collaborative interactions, ultimately paving the way for more proficient and pro-social AI.
@@ -16,10 +16,10 @@ You will engage in a conversation with an AI agent in a realistic social scenari
 You must be at least 18 years old and in the United States. Participation is voluntary and there is no cost to participate in our study. You may discontinue participation at any time during the research activity. You may print a copy of this consent form for your records. Feel free to take a break during the task if you need to.
 
 ## Compensation
-You will be paid through Prolific at a rate of $15/hr. Please make sure to submit the study to receive your payment.
+You will be paid through Prolific at a rate of $12/hr. Please make sure to submit the study to receive your payment.
 
 ## Confidentiality
-The study will collect your research data through your use of Amazon MTurk. This company is not owned by CMU. The company will have access to the research data that you produce and any identifiable information that you share with them while using their product. Please note that Carnegie Mellon does not control the Terms and Conditions of the company or how they will use or protect any information that they collect. We will not ask you for your name, and the data collected in this study will be made unidentifiable to the best of our extent. We will securely store the data on our servers and only share with qualified researchers. If you later decide that you do not want your responses included in this study, please email so we can exclude your work. Representatives of the U.S. Department of Defense will have access to research records as part of their responsibilities for human subjects protection oversight of the study.
+The study will collect your research data through your use of Prolific. This company is not owned by CMU. The company will have access to the research data that you produce and any identifiable information that you share with them while using their product. Please note that Carnegie Mellon does not control the Terms and Conditions of the company or how they will use or protect any information that they collect. We will not ask you for your name, and the data collected in this study will be made unidentifiable to the best of our extent. We will securely store the data on our servers and only share with qualified researchers. If you later decide that you do not want your responses included in this study, please email so we can exclude your work. Representatives of the U.S. Department of Defense will have access to research records as part of their responsibilities for human subjects protection oversight of the study.
 
 ## Risks
 Potential risks include boredom, fatigue, and a potential breach of confidentiality. Prolific is a 3rd party vendor which may have access to your identifiable information.
